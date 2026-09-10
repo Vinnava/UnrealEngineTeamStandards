@@ -8,7 +8,29 @@ feature - it is the standard we carry from one project to the next. Where a proj
 something down (its module name, its content root, its short prefix), those are marked as
 `<Project>` placeholders for that project's own README to fill in.
 
-Written against **Unreal Engine 5.x** conventions.
+**Version 1.2** - changelog at the end. Written against **Unreal Engine 5.x**; every claim about
+engine behaviour was checked against **UE 5.7** source, and the defaults that matter re-checked in
+**5.8**. Where a rule depends on the engine version, it says so.
+
+**Placeholders.** `<Project>` is the only placeholder. It stands for the project's short name -
+PascalCase in class, module and folder names, lowercased where the convention is lowercase
+(variables, console commands). Code examples use **`Game`** as a concrete stand-in: `LogGameQuest`,
+`GAME_API`, `gameGI`, `game.quest.launch`.
+
+**Which document wins.** When rules disagree, the higher item wins:
+
+1. **The engine.** What Unreal actually does, verified in its source, beats every document - this one
+   included. A rule here that fights the engine is a defect here.
+2. **A project's written override** - listed in that project's README with the section number and
+   the reason. It wins inside that project only.
+3. **This document.**
+4. **A project's other documents** - its `CLAUDE.md`, rule files, wiki. They may add rules and
+   project detail; where they contradict this document without a written override, this document
+   wins and the project document is the defect.
+5. **Existing code and habit.** "The codebase already does it this way" is evidence of a past
+   decision, not permission.
+
+An unwritten deviation is a defect, not an override.
 
 **Sections 1 and 2 tell you where things go. Sections 3 through 8 are the core standard - read them
 before you write your first line of code. Sections 9 through 13 are per-system rules; read the one
@@ -17,6 +39,25 @@ checklist you run before every commit.**
 
 Nothing here is aspirational. If a rule in this document is wrong, or you cannot follow it, that is
 a defect in the document - fix it (see the closing note) rather than quietly working around it.
+
+---
+
+## Architecture pillars
+
+Four pillars, **ranked**. Every rule in this document serves one of them. When two rules pull against
+each other, or a request conflicts with a rule, **the higher-ranked pillar decides** - and the
+conflict is raised in a `CONFLICT` block (14.1) before any code is written.
+
+1. **Separation of concerns** - each class, component and system does one job (1.3, 9.8).
+2. **Loose coupling** - systems talk through delegates, interfaces and subsystems, never by reaching
+   into each other's classes (9.3, 9.7).
+3. **Data-driven design** - behaviour a designer tunes lives in DataAssets, tags and settings, not in
+   code (9.2, 9.6).
+4. **Event-driven first, Tick when right** - delegates, events and timers wherever they fit; Tick
+   only with approval (3.7, 3.12, 10.5).
+
+The pillars say *what* to optimise for. The pattern catalogue in 9.10 says *how* - each approved
+pattern names what it serves.
 
 ---
 
@@ -82,8 +123,8 @@ PrivateDependencyModuleNames.AddRange(new string[]
 
 - Prefer `PrivateDependencyModuleNames` unless a public header genuinely exposes the type.
 - Platform-conditional dependencies go in an `if (Target.Platform == ...)` block, not the common list.
-- **Any `.Build.cs` change requires a clean rebuild** - Hot Reload does not propagate it. Full
-  trigger list and procedure: section 15, item 1.
+- **Any `.Build.cs` change requires regenerating project files and a full build with the editor
+  closed** - Live Coding cannot apply it. Full trigger list: section 15, item 1.
 
 ### 1.3 Source folder layout
 
@@ -109,6 +150,31 @@ Source/<Project>/
 
 **If you cannot tell which folder a new class belongs in, that usually means the class is doing two
 jobs.** Split it.
+
+### 1.4 Compile-time gating
+
+| Code that exists only for | Gate |
+|---|---|
+| Editor-only member variables | `#if WITH_EDITORONLY_DATA` |
+| Editor-only functions and logic | `#if WITH_EDITOR` |
+| Development tooling stripped from Shipping | `#if !UE_BUILD_SHIPPING` |
+| Dedicated-server-only code | `#if UE_SERVER` |
+
+- **Editor tooling goes in an editor module** (`"Type": "Editor"` in the `.uproject` or `.uplugin`),
+  which the cook strips - not in the game module behind `#if WITH_EDITOR`.
+- **Every `StartupModule` registration has a matching `ShutdownModule` release.** An unbalanced pair
+  crashes on exit and on Live Coding.
+
+### 1.5 Plugins and engine changes
+
+- **A plugin is a product.** It never references game code, talks outward only through interfaces
+  and delegates, is configured by data, versions its serialised data - and **works in an empty
+  project**. Automate that last test.
+- **Before changing engine behaviour, go down this list and stop at the first that works:** design
+  around it, an engine extension point, a plugin, a patch, a fork.
+- **If you patch the engine,** do it on a branch, wrap every change in `// <PROJECT>-BEGIN` /
+  `// <PROJECT>-END` markers, record it in a written patch register, and upstream what you can. The
+  cost is paid again at every engine upgrade.
 
 ---
 
@@ -205,6 +271,18 @@ AMyClass::AMyClass()
 Why: an inline default in a header and a constructor assignment can disagree, and the header value
 is the one that is easy to miss in review. One place for defaults means one place to look.
 
+Three things are not per-instance defaults, and stay in the header:
+
+- **`static constexpr` constants** - `static constexpr float MaxSpeed = 600.f;` is a compile-time
+  value, and 3.7 wants it next to what it governs.
+- **Default arguments** - `void Fire(float spread = 0.f);` is part of the signature.
+- **Explicit enumerator values** - `Unknown = 0` in a `UENUM`.
+
+**The constructor also builds the class default object** - at editor startup, with no world. So it
+sets defaults, creates subobjects and configures tick, and never touches the world, other actors or
+assets. `ConstructorHelpers::FObjectFinder` is a blocking load at editor startup; use a soft pointer
+set in Blueprint defaults instead. Blueprint defaults override the C++ values set here.
+
 ### 3.3 UPROPERTY categories
 
 Every designer-facing `UPROPERTY` (`EditDefaultsOnly`, `EditAnywhere`, `EditInstanceOnly`) needs a
@@ -243,6 +321,24 @@ bool bLogMovementStateChanges;
 Common branches: `Initialize|Movement`, `Initialize|WidgetClass|<Feature>`, `Initialize|Socket`,
 `Initialize|Config`, `Initialize|Debug`.
 
+**Every designer-facing number carries its limits and its unit** - `ClampMin` / `ClampMax` (plus
+`UIMin` / `UIMax` where the slider should be narrower than the legal range), and `ForceUnits` wherever
+the value has a unit:
+
+```cpp
+UPROPERTY(EditDefaultsOnly, Category = "Initialize|Movement",
+    meta = (ClampMin = "0.0", ClampMax = "2000.0", ForceUnits = "cm/s"))
+float maxWalkSpeed;
+```
+
+A designer cannot enter an invalid value, and the Details panel shows what the number means.
+
+**Design the Details panel, too.** Gate dependent properties with `EditCondition` (plus
+`EditConditionHides` when the property means nothing otherwise), give struct arrays a
+`TitleProperty` so their rows are readable, and restrict gameplay-tag pickers with
+`Categories = "Damage.Type"`. A designer should not be able to author a combination the code does
+not handle.
+
 **What is not `Initialize`:**
 
 | Kind | Category |
@@ -255,12 +351,18 @@ switches. **Anything you only watch at runtime is `Runtime`.**
 
 ### 3.4 Pointers and includes
 
-- **`TObjectPtr<T>` for all `UPROPERTY` object references.** Raw pointers only for non-`UPROPERTY`
-  locals and parameters.
+- **`TObjectPtr<T>` for all `UPROPERTY` object references.** Raw pointers only for locals and
+  parameters - never for a member (3.8).
 - **Forward declare in headers, include in the `.cpp`.**
 - **No implicit includes** - every file includes exactly what it directly uses, and nothing it does
   not. Relying on a transitive include is a build break waiting for someone else's refactor.
-- **Validate before use. Early return on null.** Every guard-clause return logs (section 6.6).
+- **`.generated.h` is the last include in its header.** UHT rejects anything after it.
+- **Export only what other modules call.** Put `<Project>_API` on a class or function another module
+  links against, not by reflex - every export is public surface (1.1).
+- **Validate before use. Early return on null**, logged as section 6.6 describes.
+- **Test `UObject` pointers with `IsValid(ptr)`, not `ptr != nullptr`.** An actor that has been
+  destroyed but not yet collected is still non-null and passes a null check; `IsValid` also rejects
+  objects marked as garbage. Plain null checks are for non-`UObject` pointers.
 
 ### 3.5 Soft vs hard references
 
@@ -295,18 +397,137 @@ void UQuestRunner::AdvanceToNextStep()
 }
 ```
 
-Note the log form: **`UE_LOGFMT` with named `{Tokens}`**, values passed directly with no `TEXT()`
-wrapper and no `*` dereference. That is the standard for all new code - see section 6.
+Note the log form: **`UE_LOGFMT` with descriptive `{Tokens}`**, values passed directly in token order,
+with no `TEXT()` wrapper and no `*` dereference. That is the standard for all new code - see section 6.
 
 ### 3.7 General quality bar
 
 - **`const` correctness throughout** - parameters, methods, locals.
-- **Avoid Tick.** If you must tick, self-disable the moment the work is done. A component ticking
-  for the life of the game to check a bool is a real cost at scale.
+- **Event-driven first; Tick needs approval** (pillar 4). Reach for a delegate, an event or a timer
+  first. When Tick genuinely is the right tool - continuous per-frame work with no natural event -
+  flag it in the plan and get it approved **before** writing it. An approved Tick carries a one-line
+  comment saying why, and self-disables the moment it has nothing to do. A component ticking for the
+  life of the game to check a bool is a real cost at scale. How to tick, when you must: 3.12.
+- **Every debug draw sits inside `#if ENABLE_DRAW_DEBUG`** - off in Shipping and Test builds
+  (`EngineDefines.h`) - **and behind a runtime bool** under `Initialize|Debug` (3.3), so it compiles
+  out of the shipped game and can be switched off in a development build.
+- **Countdowns run on a timer, not in Tick.** Arm one `FTimerHandle` for the duration, read
+  `GetTimerRemaining` for display, and clear it in teardown (10.5) - rather than accumulating
+  `DeltaTime` every frame.
 - **No magic numbers.** Named `static const` or `constexpr`, declared next to what they govern.
 - **No switch statements on identity.** See section 9.2.
 - Prefer composition over deep inheritance chains. A five-level actor hierarchy is a refactor you
   will not be able to afford later.
+
+### 3.8 Object lifetime and garbage collection
+
+The garbage collector only knows about references it can see. Everything else can dangle.
+
+- **Every `UObject*` member is a `UPROPERTY` (`TObjectPtr`) or a `TWeakObjectPtr`.** A raw member
+  pointer is invisible to GC: the object can be collected under it, and the pointer still reads
+  non-null.
+- **Strong versus weak is an ownership decision.** A `UPROPERTY` keeps the object alive; a
+  `TWeakObjectPtr` observes it and goes null when it dies. Cache what you do not own - another
+  system's actor or widget - as weak.
+- **A non-`UObject` class that holds a `UObject` uses `TStrongObjectPtr`**, or derives from
+  `FGCObject` and reports its references in `AddReferencedObjects` when it holds several.
+- **Never call `AddToRoot`.** A rooted object is never collected, and nothing records who rooted it or
+  why. Give the object a real owner instead.
+- **Never hold a `UObject` in a `TSharedPtr`.** That gives one object two owners - the GC and a
+  reference count.
+- **Data in quantity is a `USTRUCT`, not a `UObject`.** GC cost scales with object count, not bytes
+  (13.4).
+
+**Which pointer:**
+
+| Situation | Type |
+|---|---|
+| I own it; it loads with me | `UPROPERTY() TObjectPtr<T>` |
+| I observe it; someone else owns it | `TWeakObjectPtr<T>` |
+| A heavy asset, loaded on demand | `TSoftObjectPtr<T>` |
+| A heavy class, loaded on demand | `TSoftClassPtr<T>` |
+| A class to spawn, loaded with me | `TSubclassOf<T>` |
+| Held by a plain C++ (non-`UObject`) class | `TStrongObjectPtr<T>` |
+
+**Renames are identity changes.** Renaming a C++ class or a `UPROPERTY` orphans every asset that
+saved it - add a Core Redirect (`[CoreRedirects]` in `DefaultEngine.ini`) in the same commit. Never
+rename a `CreateDefaultSubobject` name: it is the component's saved identity.
+
+### 3.9 Assertions
+
+| Macro | On failure | In Shipping | Use for |
+|---|---|---|---|
+| `check(expr)` | Halts | Removed - **`expr` is not evaluated** | Invariants whose failure means continuing would corrupt state |
+| `verify(expr)` | Halts | Check removed - **`expr` still evaluated** | The same, when `expr` has a side effect you need |
+| `ensure(expr)` | Reports a callstack once, continues | Report removed - **`expr` still evaluated** | Programmer errors the game can survive |
+
+Shipping builds default `DO_CHECK` and `DO_ENSURE` to off (`Build.h`, `AssertionMacros.h`).
+
+- **Never put logic inside `check`.** It is not evaluated in Shipping, so the side effect vanishes.
+- **`ensureMsgf` is the default assertion.** Prefer a guarded `ensure` to `check` for anything a
+  player can survive -
+  `if (!ensure(IsValid(runner))) { return; }`. A crash in Shipping is worse than a missing feature.
+- **Keep `check` for true invariants** - `check(IsInGameThread())` (10.1).
+- **Expected failures are not assertions.** Bad authored data and network input are logged (6.6,
+  6.7), never `ensure`d.
+
+### 3.10 Formatting
+
+- **Opening braces go on their own line** - functions, classes, structs and control flow alike.
+  That is Epic's style and the style of every example in this document.
+- Indentation, spacing and line length are set by the repository's `.clang-format` (`tooling/.clang-format`: tabs, 120 columns), not
+  by memory or preference. Run it on the lines you changed.
+
+### 3.11 Where code goes in the actor lifecycle
+
+| Work | Goes in |
+|---|---|
+| Defaults, default subobjects, tick configuration | Constructor (3.2) |
+| Fixing up loaded data | `PostLoad` |
+| Building appearance from properties | `OnConstruction` - **idempotent**, it re-runs on every edit |
+| Wiring this actor's own components together | `PostInitializeComponents` |
+| Touching other actors or the world; binding delegates | `BeginPlay` |
+| Unbinding, clearing timers, cancelling loads | `EndPlay` |
+| Releasing native (non-`UObject`) resources | `BeginDestroy` |
+
+- **Components:** `CreateDefaultSubobject` + `SetupAttachment` in the constructor; at runtime,
+  `NewObject` + `RegisterComponent` + `AttachToComponent` - an unregistered component does nothing.
+  `InitializeComponent` only runs with `bWantsInitializeComponent = true`.
+- **An actor that needs configuring before its `BeginPlay`** is spawned with `SpawnActorDeferred`,
+  configured, then finished with `FinishSpawning`.
+- **Spawning can fail - null-check the result.** Replicated actors are spawned on the server only.
+- **Cache `FindComponentByClass`**; never call it per frame.
+- **A component never knows its owner's type.** It broadcasts; it does not call up (pillar 2).
+- **`Destroy()` marks the actor for collection; the pointer stays non-null** until GC runs.
+  `IsValid()` before every use (3.4).
+
+### 3.12 Tick
+
+A tick costs something before your code runs - the dispatch itself, per actor and **per component**
+(one NPC is often ten tick functions). Most tick fixes are deletion, not optimisation.
+
+| State | Cost |
+|---|---|
+| `bCanEverTick = false` | Not registered - zero. **The engine default for `AActor`**; delete the `true` the editor's C++ class template writes unless you need it |
+| `bStartWithTickEnabled = false`, or `SetActorTickEnabled(false)` | Registered, dormant |
+| `TickInterval = 0.25f` | Dispatched every frame; the body runs periodically |
+| `bCanEverTick = true` with an empty or polling body | Full cost for nothing - **the bug** |
+
+- **Prefer, in order:** a delegate (something already knows the value changed), a timer,
+  `SetTimerForNextTick`, tick with an interval, tick. Collision and overlap events are delegates, not
+  polls.
+- **The door pattern.** Tick on when an episodic behaviour starts, off when it ends - a door ticks
+  while *opening*, not while being a door. Status effects, interpolators and VFX all work this way.
+- **Stagger intervals and looping timers** with a random first delay, or a thousand actors on the
+  same interval spike on the same frame.
+- **Tick groups:** `TG_PrePhysics` is the default; `TG_DuringPhysics` runs alongside physics for work
+  that does not touch it; read physics results in `TG_PostPhysics`; cameras in `TG_PostUpdateWork`.
+  **Order within a group is undefined** - declare it with `AddTickPrerequisiteActor` /
+  `AddTickPrerequisiteComponent`, or do not rely on it.
+- **Many similar things tick as one.** A manager iterating an array beats a thousand ticking actors;
+  pair it with the significance manager to spend a fixed budget on the most important N.
+- **Blueprint cost is nodes x instances x frames.** Move the loop to C++ and keep the decision in
+  Blueprint. Deleting the nodes in `Event Tick` may not unregister the tick - verify with `dumpticks`.
 
 ---
 
@@ -389,14 +610,17 @@ alone.
 | `Notify` / `Request` | Crosses a system boundary | `NotifyDestinationReady`, `RequestTransition` |
 | `Mark` | Records a state transition into save data | `MarkQuestComplete`, `MarkTutorialSeen` |
 | `Validate` | Checks authored data, logs on failure | `ValidateCatalogue` |
+| `Do` | **Input adapter only** - forwards input to a component, holds no logic | `DoSprintStart`, `DoThrow` |
 
-Two distinctions that matter:
+Three distinctions that matter:
 
 - **`On` vs `Handle`.** `On*` is the event or virtual hook that fires; `Handle*` is the bound
   callback that does the work. They are not interchangeable, and mixing them makes a delegate graph
   unreadable.
 - **`Get` must have no side effects.** If it lazily loads, caches, or hydrates, it is not a `Get` -
   it is a `Resolve` or an `Ensure`.
+- **`Do*` holds no logic.** It lives only on the player-facing class and forwards to a component, so
+  the AI can drive the same component from a behaviour-tree task (9.9).
 
 ### 4.4 Class name composition
 
@@ -417,7 +641,7 @@ Read names as a pattern, not a list:
 Two rules on top of the table:
 
 - **A project short-name infix marks a class as project-core rather than feature-local.** A
-  `U<Proj>SaveGame` is core; a `UInventorySubsystem` is a feature's service. Use it consistently or
+  `U<Project>SaveGame` is core; a `UInventorySubsystem` is a feature's service. Use it consistently or
   not at all - inconsistent use is worse than none.
 - **An underscore in a class name is reserved for a polymorphic family** (`UQuestStep_*`). Do not
   introduce underscores anywhere else.
@@ -525,9 +749,12 @@ Two notes:
   inline in the header, but still **inside the constructor body**, never as member initialisers.
   The point of the rule is one place to look for defaults, and a constructor body satisfies that
   wherever it lives.
-- **A struct with no meaningful defaults does not need a constructor.** Do not add an empty one for
-  symmetry - UHT zero-initialises reflected fields, and an empty constructor is a line of noise
-  that implies a decision nobody made.
+- **Any struct with a number, bool, enum or raw pointer field needs a constructor that sets it.**
+  Reflected fields are only zeroed when the engine allocates the struct (inside a `UObject`, a
+  `TArray` property, a DataTable row). A local `FAppEntry entry;` holds garbage in every such field,
+  and the engine's uninitialised-struct check (`Class.cpp`) flags the type. A struct whose fields
+  all have their own constructors (`FName`, `FString`, `TArray`, `FGameplayTag`, `TObjectPtr`) may
+  omit it.
 
 ### 4.7 Delegates
 
@@ -546,8 +773,13 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLoadoutSaved, const FLoadoutData&
 - **Dynamic delegate parameter names are PascalCase.** The name you write in the macro becomes the
   **Blueprint pin label**, so it is user-visible text, not a C++ parameter name. This is the one
   place a parameter is not camelCase, and the reason is that a designer reads it.
-- The **member that holds the delegate** drops the `F` and returns to camelCase:
-  `onTransitionReady`.
+- The **member that holds the delegate** is a member variable, so 4.1 applies: drop the `F` and use
+  camelCase - `onTransitionReady`. The PascalCase `On*` in 4.3 names functions and virtual hooks,
+  not members.
+- **More than two parameters? Pass one context struct instead** - `FOnHitReceived` carrying a
+  `const FHitContext&` rather than five loose arguments. A new field then goes into the struct, and
+  no existing listener or signature changes. For a dynamic delegate the struct must be a
+  `USTRUCT(BlueprintType)`.
 - Choosing the wrong kind is the most common new-developer bug in Unreal. See section 9.3.
 
 ### 4.8 Approved short names
@@ -556,8 +788,8 @@ These are the **only** abbreviations accepted. Use them consistently.
 
 | Full name | Short name |
 |---|---|
-| GameInstance | `gi`, or `<proj>GI` |
-| PlayerController | `pc`, or `<proj>PC` |
+| GameInstance | `<Project>GI`, lowercased - `gameGI` |
+| PlayerController | `<Project>PC`, lowercased - `gamePC` |
 | CharacterMovementComponent | `movementComp` |
 | SkeletalMeshComponent | `skeletalMeshComp` |
 | StaticMeshComponent | `staticMeshComp` |
@@ -565,8 +797,8 @@ These are the **only** abbreviations accepted. Use them consistently.
 | AnimationInstance | `animInstance` |
 | EnhancedInputLocalPlayerSubsystem | `inputSubsystem` |
 
-**The rule behind the table: readable beats short.** A project-prefixed `gameGI` is good; `ggi` is
-not. **If a name is not in this table, write it out in full.**
+**The rule behind the table: readable beats short.** A project-prefixed `gameGI` is good; `gi` and
+`ggi` are not. **If a name is not in this table, write it out in full.**
 
 ### 4.9 File naming
 
@@ -602,6 +834,11 @@ Quest.Chapter1.Intro
   runtime sends. See section 16.
 - **Prefer tags over strings and enums** for level destinations, spawn points and identity. A tag is
   a content-side addition; an enum is a code change.
+- **Tags used in C++ are declared natively** - `UE_DECLARE_GAMEPLAY_TAG_EXTERN` in a header,
+  `UE_DEFINE_GAMEPLAY_TAG` in the `.cpp` (the macro refuses to compile in a header). Never
+  `RequestGameplayTag("Literal")` in gameplay code: a typo is a silent no-match.
+- **`MatchesTag` is hierarchical** (`Damage.Type.Fire` matches `Damage.Type`); `MatchesTagExact` is
+  not. Choose deliberately.
 
 ### 4.11 Console commands
 
@@ -609,7 +846,7 @@ Any system with non-trivial internal state should register console commands for 
 skip, reset, list, abort. They cost an hour to write and save days of clicking through content to
 reach the state you need to test.
 
-**Naming: `<proj>.<system>.<verb>`** - lowercase project and system segments, camelCase verb when it
+**Naming: `<Project>.<system>.<verb>`** - lowercase project and system segments, camelCase verb when it
 is more than one word.
 
 ```
@@ -634,7 +871,10 @@ nothing else records.
 
 - **Every `UPROPERTY` declaration** - Doxygen `/** */`
 - **Every `UFUNCTION` declaration** - Doxygen `/** */`
-- **Every variable and every function in a header** - including private and non-reflected ones
+- **Every variable and every function in a header** - including private and non-reflected ones.
+  The comment must add what the name does not: a unit, a lifetime, what null means, a caller
+  contract. **A trivial accessor whose name says everything** (`GetCurrentHealth`, `IsTransitioning`)
+  **is exempt** - a comment that repeats it is the self-evident comment 5.3 bans.
 - **Every enumerator** in a `UENUM`
 - **Every class** - a `/** */` block above `UCLASS()` stating its role and its lifetime
 
@@ -690,14 +930,16 @@ EnsureGameplayHUD();
 
 Comment the *why*, never the *what*. The code already says what it does.
 
-### 5.4 Comment maintenance (enforced on every read and edit)
+### 5.4 Comment maintenance (enforced on new and modified code)
 
-- **When you read or edit a file, if a code element that needs a comment has none, add one.**
-- **Any existing comment three lines or longer must be rewritten down to two**, preserving its
+- **Code you add or change meets this standard in full.** If a declaration you touch has no
+  comment, add one; if its comment is three lines or longer, rewrite it down to two, preserving its
   meaning.
+- **Do not repair the rest of the file as a drive-by.** Untouched code is brought up to standard in a
+  planned cleanup pass, in its own commit - the same rule as logging (6.5), for the same reason: a
+  real edit should not hide inside cleanup noise.
 
-This is not optional cleanup - it is part of touching the file. Documentation decays unless every
-pass through the code repairs it.
+Documentation decays unless it is repaired, so the cleanup pass is planned work, not optional work.
 
 ### 5.5 Forbidden content
 
@@ -735,6 +977,14 @@ UE_LOGFMT(LogGameQuestDirector, Log, "[{Obj}] [FunctionName] Description: {Detai
 A line that says "failed" without saying *what* failed, *where*, and *with what input* is not a log
 line. You will read it at 2am and learn nothing.
 
+Three rules on how those values are produced:
+
+- **`GetNameSafe(obj)`, never `obj->GetName()`.** `GetNameSafe` returns `"None"` for a null pointer
+  instead of crashing - and a log line is most often written exactly when something is null.
+- **Enums through `UEnum::GetValueAsString(value)`**, never a `(uint8)` cast. A number in a log goes
+  stale the moment the enum is edited; a name does not.
+- **Conditional lines use `UE_CLOGFMT(condition, ...)`** instead of wrapping `UE_LOGFMT` in an `if`.
+
 ### 6.2 Category naming and declaration
 
 **Every log category starts with `Log` + the project short name**, then the domain.
@@ -763,6 +1013,7 @@ Rules:
   The point of a category is that you can filter the Output Log down to one system.
 - Keep a module-wide fallback category (`LogGame`) for genuinely cross-cutting code, and use it
   sparingly.
+- **Never `LogTemp` in committed code** - it cannot be filtered down to a system.
 
 ### 6.3 Severity
 
@@ -780,38 +1031,53 @@ proceed. **A silent recovery is a bug you will meet again later with no evidence
 ### 6.4 Examples
 
 ```cpp
-UE_LOGFMT(LogGameQuestRunner, Error, "[LaunchQuest] Quest definition is null");
+UE_LOGFMT(LogGameQuestRunner, Error, "[{Obj}] [LaunchQuest] Quest definition is null",
+    GetNameSafe(this));
 
 UE_LOGFMT(LogGameQuestRunner, Warning,
-    "[LaunchQuest] Section '{Section}' not found in quest '{Quest}' - starting from beginning",
-    resumeFromSectionId, quest->GetQuestId());
+    "[{Obj}] [LaunchQuest] Section '{Section}' not found in quest '{Quest}' - starting from beginning",
+    GetNameSafe(this), resumeFromSectionId, quest->GetQuestId());
 
 UE_LOGFMT(LogGameQuestRunner, Log,
-    "[LaunchQuest] Quest '{Quest}' starting at section index {Index}",
-    quest->GetQuestId(), currentSectionIndex);
+    "[{Obj}] [LaunchQuest] Quest '{Quest}' starting at section index {Index}",
+    GetNameSafe(this), quest->GetQuestId(), currentSectionIndex);
 ```
 
 ### 6.5 UE_LOGFMT vs UE_LOG
 
 | | `UE_LOGFMT` | `UE_LOG` |
 |---|---|---|
-| Arguments | Named `{Tokens}` | Positional `%s`, `%d` |
+| Placeholders | `{Tokens}` | `%s`, `%d` |
 | FString | Pass directly | Needs `*` dereference |
 | Literals | Plain string | Needs `TEXT()` |
-| Refactor safety | High - names cannot silently swap | Low - reordering args compiles and lies |
+| Type safety | High - a type mismatch cannot corrupt the output | Low - a wrong specifier compiles and prints garbage |
 
-- **`UE_LOGFMT` is the standard for all new code.**
-- **Match the file you are working in.** Do not convert an existing file's logging as a side effect
-  of an unrelated change - that is diff noise hiding a real edit.
+**`{Tokens}` are readable labels, not a binding.** Passing bare values - `"{Obj} {Id}", a, b` - is
+`UE_LOGFMT`'s *positional* form: values match tokens by order, and the names do nothing. `{0}` and
+`{Obj}` behave identically there. Only the pair form, `("Obj", a), ("Id", b)`, matches by name
+(`StructuredLog.h`). We use the positional form with descriptive token names, so **keep the argument
+order matching the token order** - reordering compiles and lies, exactly as with `UE_LOG`.
+
+- **`UE_LOGFMT` is the standard for all new and modified code.**
+- **Do not convert an existing file's logging as a side effect of an unrelated change** - that is
+  diff noise hiding a real edit. Lines you write or change use `UE_LOGFMT`; the rest of the file is
+  converted in a planned cleanup pass, in its own commit. Same principle as 5.4.
 
 ### 6.6 What to log
 
-- **Every early return from a guard clause.** A silent `return` is a bug that costs an hour to find.
+- **Every early return from a guard clause that signals a problem.** A silent `return` on a failure
+  is a bug that costs an hour to find. Match the log to the kind of return:
+  - **Unexpected but recoverable** - `Warning` or `Error`, per 6.3.
+  - **Expected** - no target in range, an optional component absent, a hot-path early-out - `Verbose`,
+    or no log at all. A guard that fires every frame by design is not news.
+  - **A programmer error that should never happen** - `ensure` (3.9), which reports a callstack once.
 - **Every state transition** in a subsystem or runner - entered, completed, aborted.
 - **Every DataAsset validation failure**, naming the asset and the row that failed. Authored-data
   errors otherwise surface at runtime as "a thing that never appears", which reads as a missing
   feature rather than bad data.
-- **Never log at `Log` level inside Tick or a per-frame loop.** Use `Verbose`.
+- **Never log at `Log` level inside Tick or a per-frame loop.** Use `Verbose`. On a hot path, pass
+  raw values as tokens - never build an `FString` (with `FString::Printf` or concatenation) only to
+  log it.
 - **No emojis in log strings.**
 
 ### 6.7 Validation passes
@@ -821,6 +1087,11 @@ logs an `Error` for every unresolvable reference, duplicate id, or miscategorise
 
 This is the highest-value logging you will write. Bad authored data fails silently by default; a
 validation pass converts a mystery into a line in the log.
+
+**Catch it in the editor too.** Override `IsDataValid(FDataValidationContext&) const` (inside
+`#if WITH_EDITOR`) on DataAsset and actor classes, so bad data fails on save and in the Data
+Validation pass before anyone presses Play. Keep the runtime `Validate*` pass as well - it catches
+data that only goes wrong in combination, at load.
 
 ---
 
@@ -865,6 +1136,23 @@ validation pass converts a mystery into a line in the log.
 | `BB_` | Blackboard | `BB_Guard` |
 | `BT_` | Behavior Tree | `BT_Guard` |
 | `ST_` | State Tree | `ST_GuardPatrol` |
+| `BPI_` | Blueprint Interface | `BPI_Interactable` |
+| `BFL_` | Blueprint Function Library | `BFL_InventoryUtils` |
+| `BPC_` | Blueprint Actor Component | `BPC_Inventory`, `BPC_Health` |
+| `PM_` | Physical Material | `PM_Metal`, `PM_Grass` |
+| `ATT_` | Sound Attenuation | `ATT_Footsteps` |
+| `SCL_` | Sound Class | `SCL_Music`, `SCL_SFX` |
+| `MSS_` | MetaSound Source | `MSS_Explosion` |
+| `MSP_` | MetaSound Patch | `MSP_RandomPitch` |
+| `CR_` | Control Rig | `CR_Mannequin` |
+| `IK_` | IK Rig | `IK_Mannequin` |
+| `RTG_` | IK Retargeter | `RTG_MannyToPlayer` |
+| `CF_` | Curve Float | `CF_DamageFalloff` |
+| `CV_` | Curve Vector | `CV_CameraShake` |
+| `CLC_` | Curve Linear Color | `CLC_SkyTint` |
+| `CT_` | Curve Table | `CT_XPPerLevel` |
+| `GE_` | Gameplay Effect (GAS) | `GE_Damage_Fire` |
+| `GA_` | Gameplay Ability (GAS) | `GA_Dash` |
 
 **One prefix per type, never a choice of two.** Blueprint structs are `F_`, matching the C++ `F`
 struct prefix in 4.1 - not `S_`, which is also seen in the wild. Where the community uses two
@@ -925,6 +1213,11 @@ Everything else is simply `BP_<Thing>`: `BP_PortalTrigger`, `BP_Wardrobe`, `BP_A
 case-insensitively, and is a hard compile requirement. Rename the widget in UMG and the bind breaks.
 See section 12.1.
 
+**The bind name is also the C++ member name - a deliberate exception to 4.1.** A `BindWidget` member
+must match the widget's object name, so it carries the `_<Type>` underscore:
+`TObjectPtr<UButton> back_Btn;`. It is the only member-variable name with an underscore. One form
+everywhere - camelCase role, PascalCase type - in UMG, in C++, and in every example in this document.
+
 Common widget type suffixes: `_Btn`, `_Text`, `_Img`, `_ScrollBox`, `_Switcher`, `_SizeBox`,
 `_Panel`, `_Bar`, `_Box`, `_Slot`.
 
@@ -966,7 +1259,10 @@ whoever owns that content, done in one commit.
 > **C++ owns core systems, interfaces and data shape. Blueprint inherits from C++ and owns game
 > logic and presentation.**
 
-If you find yourself writing gameplay flow in C++, or system architecture in Blueprint, stop.
+**System architecture in Blueprint is never acceptable** - that half of the rule has no exceptions.
+The gameplay half is the default split, suited to a designer-heavy team. A C++-first project (small
+team, programmer-driven design) may keep gameplay flow in C++, and records that as a project override
+(see the top of this document). What no project may do is choose per feature.
 
 | Belongs in C++ | Belongs in Blueprint |
 |---|---|
@@ -979,6 +1275,16 @@ If you find yourself writing gameplay flow in C++, or system architecture in Blu
 
 Mark functions `BlueprintImplementableEvent` (C++ declares, BP implements) or `BlueprintNativeEvent`
 (C++ provides a default, BP may override) when Blueprint needs to respond to a C++ event.
+
+- **The drift diagnostic: a Blueprint branching on a game rule.** Rules must be correct, testable
+  and diffable - that is C++. Tuning is data. Composition, look and feel are Blueprint.
+- **Call a `BlueprintNativeEvent` by its plain name** from C++ - never `Foo_Implementation`, which
+  skips the Blueprint override.
+- **`BlueprintPure` only for trivial, side-effect-free functions.** A pure node re-runs for every pin
+  that reads it.
+- **Blueprint logic has one writer at a time.** A `.uasset` cannot merge, so shared logic that changes
+  often belongs in C++, where two people can work on it at once.
+- **The test:** a new enemy type is one DataAsset, one Blueprint and zero compiles.
 
 ### 8.2 Prototyping, testing and temporary work
 
@@ -1023,7 +1329,11 @@ shipping cook, and gate anything player-visible behind a build configuration che
   handful of nodes, the logic belongs in C++.
 - **Never leave orphan or disconnected nodes** in a graph. Delete them.
 - **No `Cast To` in Tick.** Cache the result once.
-- **Avoid `Get All Actors Of Class`** in anything that runs more than once at startup.
+- **`Cast To BP_X` is a hard reference** - it loads `BP_X` and everything `BP_X` references. Cast to
+  the C++ base class, or call through an interface (9.7).
+- **Blueprint is for events, not loops.** A loop over many items per frame belongs in C++.
+- **Avoid `Get All Actors Of Class`** outside one-time initialisation - never in Tick, never per
+  event. Cache the result, or have the actors register themselves.
 - **No hard references to heavy assets** in a widely-instanced Blueprint - it pulls them into memory
   at load. Soft-reference and load on demand.
 - **Use the Reference Viewer and Size Map** before committing a Blueprint that references content. A
@@ -1051,11 +1361,18 @@ when you write it, or accept the cost permanently.
 
 - **DataAssets over DataTables** for new game data. Typed `UDataAsset` subclasses give you
   polymorphism, inline authoring (`EditInlineNew` + `Instanced`), and per-asset validation. DataTables
-  are for flat, uniform rows - dialogue lines, localisation, tuning tables.
+  are for flat, uniform rows - dialogue lines, localisation, tuning tables - and are one binary file,
+  so two designers cannot edit one at once. Choose the container by shape: many uniform rows,
+  `UDataTable`; one entity, `UPrimaryDataAsset`; a value over a curve, a curve asset or `UCurveTable`;
+  project-wide or per-platform, `UDeveloperSettings` (text `.ini`, mergeable); a shared vocabulary,
+  `FGameplayTag`.
 
-- **Subsystems for services.** Game-wide services are **GameInstance subsystems**. Do not put service
-  logic directly in GameMode or GameInstance - GameMode is destroyed on map load, and anything caching
-  it dies with it. On a replicated project, note that **a subsystem has no network authority of its
+- **Subsystems for services.** Game-wide services that must outlive a map are **GameInstance
+  subsystems**; services scoped to one level - spawning, level-local registries - are **World
+  subsystems**, created and destroyed with the world. Do not put service logic directly in GameMode
+  or GameInstance - GameMode is destroyed on map load, and anything caching it dies with it.
+  **GameMode does legitimately own the match rules** - win and lose conditions, player spawning,
+  round flow - because those are per-map and server-only by nature. On a replicated project, note that **a subsystem has no network authority of its
   own** - see 11.2 before you put authoritative state in one.
 
 - **One owner per piece of state.** See 9.4.
@@ -1064,8 +1381,13 @@ when you write it, or accept the cost permanently.
 
 These exist because content always grows faster than code:
 
-- **No switch statements on identity.** Use a handler map. A `switch` on slot, item type or state
-  means every new case is a code change in a file that has nothing to do with the new content.
+- **No switch statements on identity.** A `switch` on slot, item type or state means every new case
+  is a code change in a file that has nothing to do with the new content. Use one of two patterns:
+  - **A map keyed by `FGameplayTag`**, authored in a DataAsset -
+    `TMap<FGameplayTag, TObjectPtr<UItemBehaviourAsset>>`. A new case is a new tag and a new row.
+  - **Strategy via polymorphic DataAssets** - the data carries an `Instanced` behaviour object (the
+    `UQuestStep_*` family in 4.4) and the caller invokes its virtual. A new case is a new subclass or
+    asset, and the caller never changes.
 - **No progression state in domain enums.** An enum describes what a thing *is*, never how far the
   player has got.
 - **No implicit contracts in comments.** If two things must agree, enforce it in the data - a
@@ -1075,10 +1397,11 @@ These exist because content always grows faster than code:
 - **Every new slot, item type or unlock should be a content or config change - zero code change.** If
   adding the *second* one of something requires touching C++, the first one was built wrong.
 
-**A counter-example worth internalising:** the scalability argument for an enum-keyed `TMap` is
-usually false. If the key is a C++ enum, adding a case is already a code change - so the map was never
-content-only, and it carries the serialisation hazard in section 16 for nothing. Prefer one named
-`EditDefaultsOnly` field per case.
+**A counter-example worth internalising:** an *enum*-keyed `TMap` is not one of those patterns. If
+the key is a C++ enum, adding a case is already a code change - so the map was never content-only,
+and it carries the serialisation hazard in section 16 for nothing. When the set of cases is genuinely
+fixed in code, one named `EditDefaultsOnly` field per case is the honest shape; when it should grow
+with content, key by GameplayTag instead.
 
 ### 9.3 Delegates - choosing the right kind
 
@@ -1086,17 +1409,21 @@ content-only, and it carries the serialisation hazard in section 16 for nothing.
 |---|---|---|
 | Declaration | `DECLARE_MULTICAST_DELEGATE*` | `DECLARE_DYNAMIC_MULTICAST_DELEGATE*` |
 | Blueprint-visible | **No** | Yes, with `UPROPERTY(BlueprintAssignable)` |
-| Bind | `AddUObject`, `AddLambda` | `AddDynamic` |
+| Bind | `AddUObject`, `AddWeakLambda` | `AddDynamic` |
 | Unbind | `RemoveAll(this)` | `RemoveDynamic` |
 | Performance | Faster | Slower (reflection) |
 
 - **Default to non-dynamic** unless Blueprint genuinely needs to bind.
+- **From a `UObject`, bind with `AddUObject` or `AddWeakLambda(this, ...)`** - never `AddLambda` with a
+  `[this]` capture, which the delegate cannot see and will fire into a dead object (10.2). A template
+  deduction error from `AddUObject` almost always means the handler's signature does not match the
+  delegate's, not an engine limit.
 - **Binding must match the declaration.** Mixing them does not compile, which is the one merciful
   part of this.
 - **Always unbind in the matching teardown** - `EndPlay`, `Deinitialize`, `NativeDestruct`. A dangling
   bind on a destroyed object is a crash you will reproduce once a week.
-- **A new delegate declaration requires a clean rebuild** - Hot Reload leaves stale reflection data
-  and the delegate simply never fires. Full trigger list and procedure: section 15, item 1.
+- **A new delegate declaration requires a full build with the editor closed** - Live Coding cannot
+  patch reflection data, and the delegate simply never fires. Full trigger list: section 15, item 1.
 
 ### 9.4 Ownership
 
@@ -1113,6 +1440,14 @@ Corollaries:
 - **A completion signal fires exactly once**, and the code that fires it is the code that owns the
   operation.
 - **If an invariant is re-established rather than enforced, log a Warning** (section 6.3).
+- **Capture before you transition.** A state transition often clears the fields that describe the
+  state it is leaving. Copy what you still need into a local *before* calling it:
+
+  ```cpp
+  AActor* const instigator = lastInstigator;   // Idle clears lastInstigator
+  TransitionToState(EPickupState::Idle);
+  NotifyPickupReleased(instigator);
+  ```
 
 ### 9.5 Persistence across level transitions
 
@@ -1127,6 +1462,189 @@ Design the handoff explicitly:
 - Drive anything time-based from a **subsystem** timer, not a widget tick.
 
 Section 16 covers each of these as a concrete trap.
+
+**What survives travel:** the GameInstance and its subsystems, and each LocalPlayer and its
+subsystems, always. Seamless travel also keeps the PlayerController and PlayerState - and the
+PlayerState carries data across only what you copy in `CopyProperties`. The world, its subsystems,
+the GameMode, the GameState and every other actor are always destroyed.
+
+**Under World Partition, any actor can unload at any time** (`EndPlay` with `RemovedFromWorld`).
+Never hold a hard reference to a level actor from anything that outlives it, and keep durable state
+in a World subsystem or higher, never on a placed actor.
+
+### 9.6 Project settings
+
+- **Project-wide tunables live in a `UDeveloperSettings` subclass** -
+  `UCLASS(Config = Game, DefaultConfig)` - which appears under Project Settings and saves to
+  `DefaultGame.ini`. Read it with `GetDefault<U<Project>QuestSettings>()`, and add the
+  `DeveloperSettings` module dependency.
+- Not a hard-coded constant, not a property on the GameMode Blueprint, not a hand-parsed ini section.
+- Per-level and per-asset values stay in DataAssets. A setting is for values that apply to the whole
+  project.
+- **Console variables are namespaced** `<Project>.<system>.<name>`, lowercased like console commands
+  (4.11), with every value documented in the help text. Anything that grants an advantage is
+  `ECVF_Cheat`.
+- **Per-platform differences live in per-platform config**, not in `if (platform)` branches in C++.
+- **`Saved/Config` is local and beats every other config layer.** A setting that works on one machine
+  only is usually a stale value there.
+
+### 9.7 Interfaces
+
+Interfaces are how two systems talk without including each other's classes.
+
+- **Test with `obj->Implements<UInteractInterface>()`.** It sees both C++ and Blueprint
+  implementations. `Cast<IInteractInterface>(obj)` returns null when a Blueprint implements the
+  interface, because there is no C++ vtable to cast to.
+- **Call Blueprint-facing interface functions through `IInteractInterface::Execute_Interact(obj, ...)`**,
+  never directly on a cast pointer. A direct call skips the Blueprint implementation.
+- **Hold an interface reference as `TScriptInterface<IInteractInterface>`** in a `UPROPERTY`, so the
+  object stays visible to GC (3.8).
+- A C++-only interface (`meta = (CannotImplementInterfaceInBlueprint)`) may be called through
+  `Cast<>` directly.
+
+### 9.8 Layered responsibility chains
+
+When one event crosses several classes - a hit, an interaction, a pickup - split it into layers, each
+owned by the class that has the knowledge:
+
+1. **Detect** - the sensor (projectile, trigger, trace) notices contact and broadcasts it with a
+   context struct (4.7). It never decides the outcome.
+2. **Resolve** - the target decides what the contact means *for it*, using only its own components -
+   a shield, a dodge window, armour - and returns a result enum.
+3. **Act** - the authority, usually the GameMode (9.1), applies the consequence: damage, elimination,
+   score.
+
+Each layer can be tested alone, and a new modifier - a power-up, a status effect - slots into the
+resolve step without touching the sensor, the authority or any delegate signature.
+
+### 9.9 Input adapters and shared abilities
+
+- **Abilities live in components on the shared base class** - sprint, dodge and throw sit on
+  `A<Project>CharacterBase` - so the player and the AI have exactly the same capabilities.
+- **The player class only adapts input.** Its `Do*` handlers (4.3) forward to those components and
+  hold no logic. The AI drives the same components from behaviour-tree or State Tree tasks.
+- If a behaviour exists only in a `Do*` handler, the AI cannot use it and the player's version cannot
+  be tested without input. Move it into the component.
+
+### 9.10 Design patterns - the approved catalogue
+
+Use the Unreal-native form of a pattern before inventing one.
+
+| Pattern | Unreal form | Use for | Serves |
+|---|---|---|---|
+| **Observer** | Delegates (4.7, 9.3) | "This changed" - UI, audio, achievements reacting to gameplay | Pillar 2 |
+| **Strategy** | A polymorphic `UObject` or DataAsset, `Instanced` into data (9.2) | Behaviour that varies per item, step or ability, without a `switch` | Pillar 3 |
+| **Type Object** | A `UPrimaryDataAsset` that defines a kind of thing | New enemy, weapon or item types as content, not classes | Pillar 3 |
+| **Service locator** | Subsystems (9.12) | Game-, world- or player-scoped services - never a hand-rolled singleton | Pillar 2 |
+| **Component** | `UActorComponent` / `USceneComponent` | Capabilities any actor can gain (9.9) | Pillar 1 |
+| **State machine** | StateTree, or an enum with a single owner (9.4) | AI, match phases, UI flow - anything with transitions | Pillar 1 |
+| **Command** | Enhanced Input actions (9.13); GAS abilities where GAS is used | Intent, separated from the key that produced it and the code that runs it | Pillar 2 |
+| **Factory** | `TSubclassOf<T>` + `SpawnActorDeferred` (3.11) | Spawning a designer-chosen class, configured before `BeginPlay` | Pillar 3 |
+| **Object pool** | A subsystem-owned pool of pre-spawned actors | Projectiles, impacts, damage numbers, one-shot VFX (13.4) | Performance |
+| **Message bus** | A tag-keyed message subsystem | Two systems that must not know each other exist | Pillar 2 |
+| **Dirty flag** | Push-model replication (11.8); invalidation (12.6) | Doing work only when its input changed | Performance |
+
+Choosing between the three decoupling patterns:
+
+- **Delegate** when the listener may know the source.
+- **Interface** (9.7) when you call *into* objects of varying type.
+- **Message bus** when neither side may know the other. `UGameplayMessageSubsystem` ships with Epic's
+  Lyra sample, not with the engine - copy it or write the equivalent. It is local only (it never
+  crosses the network) and carries notifications, never requests.
+
+**Do not force a pattern.** One that is not in this table needs a `CONFLICT` block (14.1) naming the
+problem it solves. Pooling anything that is not numerous and short-lived is complexity with no
+payback.
+
+### 9.11 Where state lives
+
+Two questions place every piece of state: **who owns it**, and **how long it lives**. If the answers
+disagree, it is two pieces of state - split it.
+
+| State | Home | Why |
+|---|---|---|
+| Match rules, win conditions | `AGameModeBase` | Server-only; clients never have one |
+| Match timer, team scores, phase | `AGameStateBase` | Server-owned; every client displays it |
+| Player name, score, team | `APlayerState` | Per player, visible to all, survives pawn death |
+| Camera, input mapping, UI ownership | `APlayerController` | Exists on the server and the owning client only |
+| Health, ammo, position | The pawn or its components | Belongs to the body; dies with it |
+| Settings, account, cross-level progress | `UGameInstance` or its subsystems | Survives level transitions |
+| Level-scoped managers and spawners | `UWorldSubsystem` | Lifetime tied to the world |
+| Per-human UI state, local preferences | `ULocalPlayerSubsystem` | One per local player; split-screen correct |
+| This frame only | A local variable | - |
+
+- **Client code asking for the GameMode is an architecture bug.** `GetAuthGameMode()` is null on
+  clients by design; whatever the client needs belongs on the GameState.
+- **Never `GetPlayerController(World, 0)` in gameplay code.** It is the wrong player on a dedicated
+  server and in split-screen. Walk up the chain instead: component, owner, controller, PlayerState.
+- **Cross-machine time** is `GameState->GetServerWorldTimeSeconds()`, never
+  `GetWorld()->GetTimeSeconds()`.
+- **Smells:** "I'll make a manager actor" - a World subsystem. "I'll add a singleton" - a subsystem.
+  "It resets on respawn" - it belongs on the PlayerState.
+
+### 9.12 Subsystem design
+
+| Type | Lifetime | For |
+|---|---|---|
+| `UEngineSubsystem` | Process | Engine-level services; rare in game code |
+| `UGameInstanceSubsystem` | Survives level loads | Save, session, settings, cross-level services |
+| `UWorldSubsystem` | One world | Managers, spawners, level-scoped registries |
+| `ULocalPlayerSubsystem` | One local human | Input, UI layers, local preferences |
+
+Every subsystem does four things:
+
+- **`ShouldCreateSubsystem` filters where it exists** - a World subsystem checks the world type, or it
+  spawns into editor previews and thumbnail worlds.
+- **`Collection.InitializeDependency<T>()` declares initialisation order** instead of relying on luck.
+- **`Deinitialize` mirrors `Initialize` exactly** - every bind, timer and console command released
+  (4.11).
+- **A tickable subsystem guards `IsTickable`**, or it ticks before it is ready.
+
+**A subsystem is a service, not a bag.** If you cannot state its job in one sentence, split it.
+
+### 9.13 Input
+
+- **An input action names the intent, never the key** - `IA_Interact`, not `IA_PressE`. Keys belong
+  in mapping contexts.
+- **Continuous input binds to `Triggered`.** Movement bound to `Started` moves for one frame - the
+  classic bug. Hold actions pair `Started` with `Completed` (section 16).
+- **Bind on the pawn what should die with the body** (move, fire, abilities); **bind on the
+  PlayerController what survives death** (pause, scoreboard, spectate). The test: should this work
+  while the pawn is dead?
+- **Mapping contexts:** add one on top at a higher priority for an overlay (menu, aim); remove and
+  replace for a mode change (vehicle).
+- **Never `if (bIsGamepad)`** in gameplay code. Device differences are mapping-context and platform
+  data.
+- **Input sets intent; the movement component decides.** Never call `SetMovementMode` from an input
+  handler - on a networked project the server never sees it.
+- **Movement tuning is data.** `MaxWalkSpeed`, `JumpZVelocity` and `AirControl` belong in a DataAsset
+  or settings, not scattered across Blueprint defaults.
+
+### 9.14 Save data and versioning
+
+- **Mark saved fields `UPROPERTY(SaveGame)`** and serialise with `ArIsSaveGame = true`.
+- **A version field from day one**, and the migration for a format change lands **in the same
+  commit** as the change.
+- **Migrations are sequential** (v1 to v2 to v3), never per-version branches - players skip versions.
+  Keep every migration forever.
+- **Save identity and data** - a GameplayTag, an `FPrimaryAssetId`, a GUID - never a pointer, which
+  means nothing on the next load.
+- **Save asynchronously**, never blocking the game thread.
+- **Archive a save from every shipped version and load them all in CI** (14.5). A migration never run
+  against a real old save is a hypothesis.
+
+### 9.15 GAS and AI
+
+- **GAS is a large commitment.** Skip it for a few fixed actions, no status effects, a single-player
+  prototype, or a team that does not know it. The middle path - gameplay tags plus a damage pipeline
+  built like 9.8 - transfers to GAS later.
+- **If you use GAS:** the ability system component lives on the PlayerState for respawning players
+  (raise its `NetUpdateFrequency`) and on the pawn for AI and one-life enemies. Initialise it from one
+  idempotent function called from both `PossessedBy` and `OnRep_PlayerState`. Activate abilities by
+  tag, never by class. Health loss happens in exactly one place (a meta attribute resolved in
+  `PostGameplayEffectExecute`). Cues are cosmetic only - they do not run on a dedicated server.
+- **AI:** StateTree for new work; Behavior Trees are mature and fine - do not migrate on principle.
+  Perception is event-driven; never poll for targets.
 
 ---
 
@@ -1233,16 +1751,16 @@ void UInventorySubsystem::RequestIconLoad()
 {
     streamableHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
         iconAsset.ToSoftObjectPath(),
-        FStreamableDelegate::CreateUObject(this, &UInventorySubsystem::OnIconLoaded));
+        FStreamableDelegate::CreateUObject(this, &UInventorySubsystem::HandleIconLoaded));
 }
 
-void UInventorySubsystem::OnIconLoaded()
+void UInventorySubsystem::HandleIconLoaded()
 {
     UTexture2D* loaded = iconAsset.Get();
     if (!IsValid(loaded))
     {
         UE_LOGFMT(LogGameInventory, Warning,
-            "[{Obj}] [OnIconLoaded] Icon was collected before the callback fired: {Path}",
+            "[{Obj}] [HandleIconLoaded] Icon was collected before the callback fired: {Path}",
             GetNameSafe(this), iconAsset.ToString());
         return;
     }
@@ -1256,9 +1774,16 @@ Rules:
 - **The callback fires on the Game Thread.** You do not need to marshal back from it.
 - **Null-check the loaded asset in the callback anyway.** The requesting object can be destroyed, or
   PIE can stop, between the request and the callback.
-- **Store the `TSharedPtr<FStreamableHandle>`** if you need to cancel or to keep the load alive.
-  Dropping the handle releases your reference; if you were the only holder, the load is cancelled.
-- **Never assume a load is fast.** Profile before you decide a synchronous load is acceptable.
+- **The handle is the ownership.** Store the `TSharedPtr<FStreamableHandle>` in a member; drop it and
+  the asset can be collected, often in the same frame. Cancel it in `EndPlay`.
+- **Define the not-yet-loaded window.** Every async load has a moment where the asset is absent; the
+  code needs an explicit fallback there, with a Warning log - never a hope.
+- **Every soft reference needs a named preload moment** - load one step ahead of need. A hitch is
+  almost always a load that started when the asset was needed.
+- **`LoadSynchronous` in a gameplay path is the bug** (13.5). It is fine in editor tools and behind a
+  loading screen - as are `LoadObject` and `StaticLoadObject`, which block the same way.
+- **Load only what the screen needs.** Tag DataAsset fields with `meta = (AssetBundles = "UI")` so a
+  catalogue screen loads 100 icons, not 100 meshes.
 
 ### 10.4 Background work
 
@@ -1270,6 +1795,26 @@ The pattern in 10.1 covers almost every case: do the work on a background thread
 back to the Game Thread, resolve a weak pointer there. Prefer it to a `TFuture` continuation chain,
 because `.Then()` runs on an unspecified thread and you end up hand-writing the same marshalling step
 with an extra layer of indirection around it.
+
+**The only safe shape is gather, compute, apply:**
+
+1. **Gather** on the game thread - copy the world state you need into a plain-value snapshot.
+2. **Compute** on workers - a pure function of the snapshot, writing to disjoint outputs. One output
+   slot per input index needs no lock.
+3. **Apply** on the game thread - re-validate the owner (a `TWeakObjectPtr`) and write the results
+   back.
+
+If phase 2 needs a lock, the split is wrong - widen the snapshot. If the gather costs more than the
+compute, do not parallelise.
+
+- **Launch new work with `UE::Tasks::Launch`**, many independent items with `ParallelFor`, and use
+  `AsyncTask` where you need a named thread. A `UE::Tasks::FPipe` serialises access without blocking
+  and cannot deadlock - prefer it to a mutex.
+- **`ParallelFor` pays only when each item's work is substantial and independent.** Pre-size the
+  output and write to `[Index]` - never `Add` to a shared container, never lock inside the body.
+  Measure it both ways; `EParallelForFlags::ForceSingleThread` is the one-token A/B test.
+- **`Wait()` right after `Launch()` is a slow function call.** An unintended sync is a bug, not a cost.
+- **Capture by value, `MoveTemp` large payloads, and cross threads with a `TQueue`.**
 
 If you do need an `FRunnable`:
 
@@ -1288,6 +1833,22 @@ object that may be gone.
 - **Unbind every delegate in the matching teardown** (section 9.3).
 - **A world timer does not survive a hard `OpenLevel`** (section 9.5). Anything that must survive a
   map load belongs on a GameInstance subsystem's timer manager, not the world's.
+
+### 10.6 Animation Blueprints
+
+**Gather on the game thread, derive on a worker.** `NativeUpdateAnimation` runs on the game thread:
+copy what the graph needs - velocity, flags, aim - out of the pawn and its components into member
+variables, and do nothing else there. `NativeThreadSafeUpdateAnimation` runs on a worker before the
+graph updates: compute everything derived from those copies there - blend weights, speed bands,
+lean. The engine's own header gives the same advice (`AnimInstance.h`).
+
+- **The thread-safe update never touches another `UObject`.** It reads only what the game-thread
+  update copied; that is what makes it safe.
+- **In Blueprint, mark AnimBP functions Thread Safe and read through property access**, keep
+  multi-threaded animation update on, and fix every thread-safety warning the Anim Blueprint
+  compiler raises.
+- **Animation is usually the largest game-thread line.** Use update rate optimisation (URO) and the
+  animation budget allocator for crowds, and tune by screen size, not distance.
 
 ---
 
@@ -1376,9 +1937,19 @@ void OnRep_ActiveQuestTag(const FGameplayTag& previousTag);
 
 Rules:
 
-- **Register every replicated property in `GetLifetimeReplicatedProps`.** A `Replicated` `UPROPERTY`
-  that is not registered simply never replicates, and it is easy to ship that way - the property
-  exists, the code compiles, and the client silently holds its constructor default forever.
+- **Register every replicated property in `GetLifetimeReplicatedProps`.** What happens to one you
+  forget depends on two console variables, and both defaults are silent in UE 5.7 (`NetCVars.cpp`):
+  - `Net.AutoRegisterReplicatedProperties` (default **on**) registers it for you with no condition. It
+    replicates - to everyone - so a property you meant to be `COND_OwnerOnly` leaks to every client.
+  - With auto-registration off, it never replicates and the client holds its constructor default
+    forever. `Net.EnsureOnMissingReplicatedPropertiesRegister` (default **off**) makes that an
+    `ensure`.
+
+  **On a replicated project, set auto-registration to `0` and the ensure to `1`** under
+  `[ConsoleVariables]` in `DefaultEngine.ini`, and fix everything the ensure reports - plugin classes
+  included - before committing the setting. A missing registration is then loud instead of silently
+  wrong. If a property is deliberately not replicated in a subclass, say so with
+  `DISABLE_REPLICATED_PROPERTY`.
 - **Name the `OnRep_` after the property it responds to, not after what it does.**
   `OnRep_ActiveQuestTag`, not `OnRep_QuestChanged`. The engine matches on the declared name, and a
   reader needs to see which property fired it.
@@ -1392,6 +1963,25 @@ Rules:
   an RPC, or in a local response to the state change.
 - **Do not replicate what a client can derive**, and **never replicate UI state.** Widgets are local;
   replicate the data the UI reads.
+- **The test for property versus RPC:** *if a player joined right now, would they need to know this?*
+  Yes - a replicated property; late joiners get it. No - an RPC. A door opened by a multicast is
+  closed for everyone who joins later.
+- **Call `Super::GetLifetimeReplicatedProps` first.** Forgetting it silently stops every inherited
+  property replicating.
+- **Clients never see intermediate values** - replication sends the latest state, not every change.
+  Never count events by diffing a replicated value.
+- **Replicated means readable.** Anything replicated to a client is in that client's memory;
+  `COND_OwnerOnly` is the only defence against another player reading it.
+- **`OnRep_` also fires on initial replication and on re-entering relevancy, and is skipped when the
+  value returns to what the client already had.** Use `REPNOTIFY_Always` for values that can
+  oscillate (health, ammo).
+- **Collections that change more than rarely use `FFastArraySerializer`**, mutated only through the
+  list's own methods with `MarkItemDirty` / `MarkArrayDirty`. A plain `TArray` resends the whole
+  array.
+- **Quantise vectors** (`FVector_NetQuantize`, `_10`, `_100`, `_Normal`) wherever full precision is
+  not needed.
+- **Replicated subobjects use the registered list** - `bReplicateUsingRegisteredSubObjectList = true`,
+  with matched `AddReplicatedSubObject` / `RemoveReplicatedSubObject` calls.
 
 **Use replication conditions deliberately - the default sends to everyone:**
 
@@ -1414,6 +2004,15 @@ void AGamePlayerState::GetLifetimeReplicatedProps(
     DOREPLIFETIME_CONDITION(AGamePlayerState, currency, COND_OwnerOnly);
 }
 ```
+
+**The initialisation race.** The controller, the PlayerState and replicated properties arrive in any
+order, possibly after `BeginPlay`. Write one idempotent `TryInitialise()` that checks its own
+preconditions, and call it from `BeginPlay`, `PossessedBy`, `OnRep_Controller` and
+`OnRep_PlayerState` - whichever arrives last does the work.
+
+**Cutting bandwidth, in this order:** replicate less, conditions, lower frequencies, fast arrays,
+quantisation, a property instead of a frequent multicast, dormancy, custom `NetSerialize`, push model.
+Exhaust "send less" before "send it smaller".
 
 ### 11.4 RPCs
 
@@ -1466,6 +2065,13 @@ Rules:
   reach anyone the actor is not relevant to. Multicast is for cosmetic, fire-and-forget effects only.
 - **Never fire an RPC from a constructor or from `GetLifetimeReplicatedProps`.** Both run before any
   connection exists.
+- **The client sends intent, never outcome.** "Fire at this point" is a request; "I hit them for 87"
+  is a cheat. Never accept a client's hit result "for performance".
+- **`_Validate` rejects only the impossible or malformed** - failing it disconnects the player.
+  Gameplay rules are re-checked in `_Implementation`, assuming the client checked nothing.
+- **Call an RPC by its plain name**, never `_Implementation`.
+- **`Unreliable` also suits streaming data that is superseded shortly after** - a reliable stream
+  stalls behind one lost packet. `NetMulticast` is throttled; never use it as a state channel.
 
 ### 11.5 Relevancy and update frequency
 
@@ -1508,6 +2114,15 @@ Relevancy is the bigger lever, and it is free:
   Reserve it for things that genuinely are always relevant - GameState, PlayerState.
 - **A non-relevant actor sends no packets regardless of its update frequency.** Fix relevancy before
   you tune frequency.
+- **Dormancy is the cheapest lever and the most forgotten.** An actor that rarely changes - a door, a
+  chest, a spawner - starts `DORM_Initial`. **Call `FlushNetDormancy()` before changing a dormant
+  actor**, or server and clients disagree forever, silently.
+- **`NetPriority` decides what survives when bandwidth saturates.** The PlayerState has a low update
+  frequency by default - raise it if you put fast-changing data there.
+- **Work through these in order before any architecture change:** relevancy, dormancy, frequency,
+  priority, then an audit that deletes unused properties and makes the rest owner-only where it can.
+  Replication Graph and Iris are mutually exclusive replication systems; justify either with a
+  server capture (13.8).
 
 ### 11.6 Naming
 
@@ -1521,8 +2136,9 @@ is mandatory because nothing else at the call site tells you:
 | `NetMulticast` RPC | `Multicast` | `MulticastPlayHitEffect` |
 | RepNotify handler | `OnRep_` | `OnRep_ActiveQuestTag` |
 
-**`OnRep_` is the one underscore we accept in a function name**, because the engine requires that
-exact form. RPC prefixes stay PascalCase and unbroken - `ServerRequestInteract`, not
+**Underscores in function names are reserved for engine-required forms** - the `OnRep_` prefix and
+the `_Implementation` / `_Validate` suffixes (11.4). The only other underscore in a name is the
+polymorphic class family in 4.4, and the bind-name member in 7.4. RPC prefixes stay PascalCase and unbroken - `ServerRequestInteract`, not
 `Server_RequestInteract` - consistent with the verb-first rule in 4.3. Pick one form and hold it;
 a codebase with both is one where nobody can grep for either.
 
@@ -1532,10 +2148,50 @@ a codebase with both is one where nobody can grep for either.
   per feature. Single-process PIE shares statics and hides a whole category of bug.
 - **Test as a dedicated server, not only as a listen server.** A listen server is both authority and
   client, so it silently masks missing `OnRep_` calls and missing authority checks.
-- **Test with simulated latency and packet loss** (`Net PktLag`, `Net PktLoss`). Prediction bugs are
-  invisible at 0ms.
+- **Keep simulated latency and loss on in your normal setup** (`Net PktLag=120`, `Net PktLoss=3`), not
+  only during bug hunts. Prediction bugs are invisible at 0 ms.
+- **Default PIE to a dedicated server**, and package and run a real dedicated server build weekly from
+  the first month.
+- **On a listen server the host has both authority and local control** - code that handles each
+  separately fires twice there.
 - **Watch the bandwidth.** `stat net` and the Network Profiler will show you a 100 Hz actor long
   before a player reports it.
+
+### 11.8 Push model and Iris
+
+Both are **off by default in UE 5.7 and 5.8** (`Net.IsPushModelEnabled`,
+`net.Iris.UseIrisReplication`). Decide on both alongside the replication decision in 11.1, and write
+the answer in the README.
+
+- **Push model** lets game code tell the network system what changed, instead of the server comparing
+  every replicated property on every net update. Enable it with `Net.IsPushModelEnabled=1` and a
+  `NetCore` dependency, register properties with `DOREPLIFETIME_WITH_PARAMS_FAST` and
+  `bIsPushBased = true`, and call `MARK_PROPERTY_DIRTY_FROM_NAME` at every write. **Route every write
+  through a setter** - a write that is not marked dirty does not replicate. Push model pays off for
+  many properties that change rarely; it is the last step of the bandwidth order in 11.3, not the
+  first.
+- **Iris** is Epic's replacement replication system - production-ready in 5.8 according to Epic's
+  release notes, but still opt-in. It changes how replication is configured and
+  prioritised, not the rules in this section: authority, conditions, RPCs and `OnRep_` all still
+  apply. Do not switch a project to it mid-development without a spike on a branch first.
+
+### 11.9 Prediction
+
+- **Predict only what passes all three:** would the player feel the latency; does the client have all
+  the information; is being wrong cleanly reversible? Never predict damage to others, server-only
+  information or randomness.
+- **Custom movement goes inside the CharacterMovementComponent**, with its own
+  `FSavedMove_Character`: every custom field captured in `SetMoveFor` and restored in `PrepMoveFor`,
+  and intent packed into the four custom compressed flags. Capture without restore is an
+  intermittent desync that LAN testing never shows.
+- **A custom movement mode reads only velocity, acceleration, intent flags and the world; uses no
+  randomness; and checks its exit condition first.**
+- **Corrections are not failures.** The goal is zero corrections the player can feel - watch them
+  with `p.NetShowCorrections 1`.
+- **Server-side rewind** for hit registration is a design decision - it moves the unfairness to the
+  victim. Cap the rewind window.
+
+---
 
 ## 12. UMG and Slate rules
 
@@ -1557,7 +2213,7 @@ A widget may move anywhere in the tree as long as its **name survives**. A renam
   to go wrong.
 - **`bOverride_*` flags left off make the value inert.** A property you set that does nothing is
   worse than one you did not set.
-- **Name by role, never by engine default.** `HeaderTitle_Text`, not `TextBlock_45`. Set both `Name`
+- **Name by role, never by engine default.** `headerTitle_Text`, not `TextBlock_45` (form: 7.4). Set both `Name`
   and `DisplayLabel` to the same string.
 - **One widget, one job.** A widget that both fetches and displays is two widgets.
 
@@ -1567,7 +2223,7 @@ When exchanging widget trees as T3D text between developers:
 
 - Apply everything in 12.2 before sending - a paste-ready tree, not a dump.
 - **Preserve every `BindWidget` name exactly.**
-- **State that the old root must be deleted before pasting.** UMG suffixes duplicates (`Back_Btn_1`)
+- **State that the old root must be deleted before pasting.** UMG suffixes duplicates (`back_Btn_1`)
   and silently breaks every bind.
 - **Flag layout bugs you find on the way** rather than quietly fixing them - the other developer
   needs to know.
@@ -1581,6 +2237,48 @@ If you drop to Slate, two hard rules from section 16 apply:
   style struct, or subclass and override the virtual.
 - **Check whether the engine widget already implements the input hook** before you override it. One
   owner per input.
+
+### 12.5 Player-facing text
+
+- **Everything a player reads is `FText`**, never `FString` or `FName`. Only `FText` is gathered for
+  localisation.
+- **C++ literals use `LOCTEXT` / `NSLOCTEXT`**, with `LOCTEXT_NAMESPACE` defined and undefined inside
+  the `.cpp`. In Blueprint and assets, leave player-facing text localisable, not culture-invariant.
+- **Build sentences with `FText::Format` and named arguments**, never by concatenating strings. Word
+  order changes between languages.
+- **Numbers, dates and times go through `FText::AsNumber` / `AsDate` / `AsTime`** so they follow the
+  player's culture.
+- **Wire and save data stay `FString`.** Convert at the UI boundary, not before.
+- **Never `FText::FromString` on player-facing text** - it is invisible to localisation. Use
+  `LOCTEXT` or a string table.
+- **Format with `FText::AsPercent`, `AsCurrency` and `AsTimespan`** as well, never by hand. Never
+  hard-code a key name in text - show the current binding's glyph (`UCommonActionWidget`).
+- **`FName` is for identity** (map keys, bones, sockets, tags), **`FString` for manipulation**
+  (paths, parsing, logs), **`FText` for anything a player reads.**
+
+### 12.6 UI architecture and cost
+
+**A widget displays. It never owns, decides or polls.** The test: delete every widget, and the game
+is still fully playable and correct.
+
+- **UI is client-only**, owned by the PlayerController or a `ULocalPlayerSubsystem` - never the pawn.
+  A dedicated server has no widgets at all.
+- **Lifecycle:** `NativeOnInitialized` for one-time setup; `NativePreConstruct` for appearance only
+  (guard editor-only work with `IsDesignTime()`); `NativeConstruct` binds and **seeds the initial
+  value**; `NativeDestruct` unbinds, mirroring Construct exactly. `NativeTick` - don't.
+- **Update by push, not pull.** UMG property bindings are evaluated every frame, and `NativeTick`
+  polling is the same cost written by hand. Push with a delegate on change, or use a view model
+  (MVVM, `FieldNotify`) - the third widget that needs the same value is the point to introduce one.
+- **Screens are pushed, not opened.** With Common UI, set the Game Viewport Client class to
+  `CommonGameViewportClient` (without it, input routing silently does nothing), give every
+  activatable widget a desired focus target (`NativeGetDesiredFocusTarget`), and push screens onto
+  layer stacks through a subsystem.
+- **Widget count is the cost.** Toggle with `Collapsed`, not `Hidden` - hidden still pays for layout.
+  Non-interactive widgets are `HitTestInvisible` or `SelfHitTestInvisible`; list views recycle their
+  entries; an `InvalidationBox` helps only static content and makes animated content slower; every
+  world-space widget is its own render target - project to a screen canvas where you can.
+- **Budget the HUD** (a project number - 0.5 ms is typical) and measure with `stat slate` and the
+  Widget Reflector.
 
 ---
 
@@ -1601,16 +2299,175 @@ If the project ships on both desktop and mobile, every interactive UI system has
 the mobile one is the one under pressure. **If the project is desktop-only, do not build the second
 path** - an unused Mobile widget tree is maintenance cost with no user.
 
-### 13.2 Habits that pay
+### 13.2 Measure, then decide
 
-- **Avoid Tick** (3.7). Where you cannot, also consider a longer tick interval rather than every
-  frame.
-- **Profile before optimising**, with `stat unit`, `stat game`, Unreal Insights, and the GPU
-  visualizer. A guess costs more than a measurement.
+Six principles govern every performance decision:
+
+1. **The bottleneck is singular.** One stage - game thread, render thread, RHI thread or GPU - sets
+   the frame time. Work anywhere else returns nothing.
+2. **Measure on the target, in the build you ship.** Profile a **Test** build (Shipping-like, with
+   stats and the console) on the lowest target device. A Development editor build is a different
+   program, and PIE can rank the stages in the wrong order, not merely inflate them.
+3. **Optimise the distribution, not the mean.** Players feel the 99th percentile and the hitch. A
+   change that lowers the average and raises p99 is a regression.
+4. **Deletion beats optimisation.** Before making something faster, ask whether it should run at
+   all (3.12).
+5. **Instrument once, benefit forever** (13.6).
+6. **A fix without an after-capture did not happen.** Capture, hypothesise, change, capture again -
+   and keep both numbers.
+
+**Milliseconds are the only unit.** Frame rate is a reciprocal and misstates severity - "we lost 15
+fps" is 1.2 ms at 120 fps and 11 ms at 45. State the target in fps once, then work in ms.
+
+**Start every investigation with `stat unit`:**
+
+| Highest line | You are | Look at |
+|---|---|---|
+| Game | Game-thread bound | Tick count, gameplay code, AI, animation, replication |
+| Draw | Render-thread bound | Primitive count, culling, draw submission |
+| GPU | GPU bound | Shading, overdraw, resolution, shadows, Lumen, Nanite |
+| RHIT | RHI-thread bound | Submission count, driver cost |
+| Numbers fine, feels bad | Variance | Hitches and frame pacing (13.5) - `stat unitgraph` |
+
+Then one stat group for that stage, then a trace. Does `r.ScreenPercentage 50` halve the GPU time?
+You are pixel-bound. **Read the count before the time** - 340 calls of 6 microseconds is an
+algorithm problem no micro-optimisation fixes, which is why `dumpticks` and `obj list` come first.
+
+**A budget has line items and owners.** The project README writes the frame budget per target:
+ceiling minus a reserve, divided into lines (game thread, animation, UI, GPU passes, memory, VRAM),
+**each with a named owner**, judged on p99 and hitches per minute. A line with no owner is a wish.
+
 - **Check the Size Map** on any Blueprint or widget that references content.
 - **Build a packaged build for the lowest target platform early and often.** Problems that only
   appear in a cook are the expensive kind, and they compound the longer you wait to find them. See
   section 15 for the editor-versus-packaged symptom list.
+
+### 13.3 Getting assets into the cook
+
+The cooker includes what it can reach from the maps being cooked and from the Asset Manager. Nothing
+else ships.
+
+- **Register every data-driven asset type as a Primary Asset Type** - Project Settings > Asset
+  Manager, with its directory and cook rule. An asset reached only through a soft path or a string is
+  otherwise absent from the build (section 15, item 19).
+- **Derive those DataAssets from `UPrimaryDataAsset`**, which supplies `GetPrimaryAssetId` for you.
+- **Load them by `FPrimaryAssetId` through `UAssetManager`**, not by path, so the code and the cook
+  agree on what exists.
+- **After adding a new asset type, check a packaged build's contents** with the Asset Audit window.
+- **Set a cook rule per type** (`AlwaysCook`, `DevelopmentCook`, `NeverCook`), and decide chunk
+  assignments when you decide asset types - chunking cannot be retrofitted.
+- **Default every asset reference in a DataAsset to soft.** Hard references come from `TObjectPtr`
+  and `TSubclassOf` properties, `Cast To BP_X` nodes, Blueprint-typed variables, Details-panel
+  default values, child actor components and DataTable rows that point at assets. Soft pointers,
+  `FPrimaryAssetId`, interfaces and tags create none.
+- **Find reference debt with a loop:** the Size Map shows what it costs, the Reference Viewer (depth
+  raised) shows which edge pulled it in; fix that one node and repeat.
+- **Cook nightly from the first week.** Cook-only bugs exist nowhere else. Treat incremental cooking
+  as an iteration accelerator, and validate against a clean cook before every milestone.
+- **Exclude `Developers/` and `TEMP/` from the cook** (Project Settings > Packaging > Directories to
+  never cook) - see 8.2.
+
+### 13.4 Memory, GC and pooling
+
+- **Memory is four budgets:** physical memory (the OS kills you), VRAM (on PC, overcommit degrades
+  into erratic GPU time), address space, and **object count**. GC cost scales with the number of
+  `UObject`s and references, not with bytes - a project under its byte budget can still hitch every
+  few seconds.
+- **Track `UObject` count beside bytes** (`obj list`, `stat gc`). Every component is an object: 400
+  NPCs with ten components each is 4,400 objects.
+- **Read `memreport -full` in pairs, from a packaged build.** One report is usage; two are the
+  answer. Editor reports include the editor.
+- **Tag every system you own with an LLM tag** (`LLM_DEFINE_TAG`, `LLM_SCOPE_BYTAG`) when you write
+  it, named like its trace scopes. Untagged memory has no budget line and no owner.
+- **Find reference leaks with `obj refs name=X`.** A `UObject` held alive by a forgotten reference is
+  correctly tracked memory, so allocation tools cannot see it.
+- **Pool what is numerous and short-lived** - projectiles, impacts, damage numbers, one-shot VFX,
+  list rows - and nothing else. `Reset()` must clear **every** member; the classic pool bug is the one
+  field nobody remembered.
+- **Blurry textures are a budget conversation** (`stat streaming`): the scene wants X MB and the pool
+  has Y. UI textures are set to `Never Stream`, or they pop.
+
+### 13.5 Hitches and loading
+
+A hitch is one frame that did a second's work. Report **hitches per minute** alongside p99. Nearly
+every hitch is one of five things:
+
+| Archetype | Tell | Fix |
+|---|---|---|
+| Synchronous load | Tied to a gameplay event; `FlushAsyncLoading` in the trace | Async load one step ahead (10.3) |
+| PSO / shader compile | **First time only**, never again | PSO precaching plus a bundled PSO cache; test on a cold machine |
+| Garbage collection | Regular, no gameplay link | Fewer objects, clustering, incremental GC (13.4) |
+| Spawn burst | Exact gameplay-event link | Pool, stagger across frames, or do not make them actors |
+| Level streaming | Same place on the map | Smaller cells, fewer actors per cell, an earlier loading range |
+
+- **Ask "does it happen again?" first** - no means PSO. Then look two or three frames *before* the
+  spike; the cause is often there.
+- **Stagger one-off work.** 300 spawns in one frame is a freeze; 30 a frame for ten frames is
+  invisible.
+- **Never fix pop-in by blocking.** It trades a visual bug for a freeze.
+- **Loading is the most build-sensitive cost in the engine.** Only a packaged IO Store build, on the
+  slowest target storage, counts.
+
+### 13.6 Instrumentation
+
+A subsystem is not done until it has all four:
+
+1. **A CPU scope on its update** - `TRACE_CPUPROFILER_EVENT_SCOPE(Quest_Tick)`, named `System_Verb`
+   so traces group by owner. Never the `_TEXT` form on a hot path; it allocates.
+2. **A counter on every queue, pool and active set** - `TRACE_DECLARE_INT_COUNTER` and
+   `TRACE_COUNTER_SET`.
+3. **A CSV stat matching its budget line**, with the same name (`CSV_SCOPED_TIMING_STAT`).
+4. **An LLM tag** (13.4).
+
+Scope entry points and phases, not every function - a scope earns its place at about 50
+microseconds. **Bookmark the game's state machine** (`TRACE_BOOKMARK` on wave start, level loaded),
+never per frame. These macros compile to nothing when their facility is disabled, so they need no
+`#if`.
+
+### 13.7 Content costs
+
+- **Chase draw calls only when Draw or RHIT is the highest `stat unit` line.** One parent material
+  with many instances batches; many materials do not.
+- **Review materials by screen coverage, not instruction count.** Cost is instructions x pixels x
+  layers, so a cheap translucent effect covering the screen twice outcosts a complex opaque one.
+  Budget VFX overdraw in screen multiples, and test effects together, not alone.
+- **Static switches multiply shader permutations** - ten switches, 1,024 variants. Use Quality
+  Switches for scalability and static switches sparingly.
+- **Count the shadow-casting lights** before tuning shadows. Virtual Shadow Map cost comes from
+  invalidation: moving lights, moving geometry, LOD changes, WPO.
+- **Wrong bounds defeat every culling stage at once.** `FreezeRendering`, then flying the camera out,
+  finds most culling problems in two minutes.
+- **Nanite meshes need no authored LODs; everything else still does.** Nanite is a per-category
+  measurement, not a project-wide policy.
+- **Handhelds:** measure at thermal steady state (ten minutes in, unplugged), or the number is
+  fiction. Scalability tiers may change resolution, post, GI and shadows - never gameplay visibility
+  or fairness. Dynamic resolution is the answer to throttling.
+
+### 13.8 Server performance
+
+- **Server cost scales with actors x connections.** Four players is a different program from 64.
+  Profile a headless dedicated server at the **target player count, with bots**, from pre-production.
+- **A replicated property costs a comparison per connection per tick** whether or not it changed -
+  server CPU before bandwidth.
+- **Run `dumpticks` on the server separately**, and wire significance up server-side. Nothing is
+  off-screen to a server, so AI, animation for authoritative hits and physics never cull themselves.
+- **Work through the levers in 11.5 before any architecture change**, and record the deferral with its
+  number.
+
+### 13.9 Regression gates
+
+- **Performance is defended per commit or not at all.** A deterministic perf test - fixed level,
+  route, seed, build configuration and device - runs on dedicated hardware in CI (Gauntlet drives
+  it), captures CSV, and **fails the build** when a budget line's p99, the hitch count, peak memory,
+  peak VRAM or the `UObject` count passes its threshold. A warning is ignored by week three.
+- **Measure the noise floor first** - ten runs of the same build - and set the failure threshold well
+  above it, or nobody trusts the gate.
+- **A failure belongs to whoever caused it, the day it lands.** The gate is never disabled
+  "temporarily"; a budget change is a recorded product decision.
+- **Trend as well as gate.** A gate catches cliffs; a trend catches 0.3 ms a week.
+- **Stop a fix being undone.** Record symptom, measurement, the wrong hypothesis, root cause, fix and
+  result, and leave a two-line `DO NOT UNDO` comment on the code naming the capture that justified
+  it.
 
 ---
 
@@ -1622,8 +2479,23 @@ path** - an unused Mobile widget tree is maintenance cost with no user.
   before writing a line.
 - **Diagnosis before code.** Root cause identified and agreed before a fix is written. A fix applied
   to a symptom you have not explained will come back.
-- **Flag conflicts explicitly.** If new work genuinely conflicts with existing architecture, say so
-  before you write around it.
+- **Flag conflicts in a `CONFLICT` block, before any code.** If new work genuinely conflicts with a
+  pillar, a rule in this document or the existing architecture - or you hit an include-path or
+  ordering problem that changes the plan - raise it in this fixed format and wait for a written
+  answer:
+
+  ```
+  CONFLICT
+  Rule:      <pillar or section, e.g. Pillar 2 / 9.4>
+  Existing:  <what the code or design does now>
+  Requested: <what the change needs>
+  Options:   A) <approach> - <trade-off>
+             B) <approach> - <trade-off>
+  Recommend: <A or B, and why>
+  ```
+
+  A fixed format makes a conflict reviewable and hard to skip. People and assistants (14.2) use the
+  same block.
 - **Present architectural forks as explicit Option A / Option B with trade-offs** - before the
   decision, not after.
 - **Explain the why.** When you introduce a pattern, explain the reasoning: in the PR, in the review,
@@ -1664,17 +2536,72 @@ Three things that do not change either way:
 - **A large diff you did not understand is not speed.** It is debugging deferred to a worse moment,
   usually to whoever opens the file next.
 
+### 14.3 Source control
+
+- **Binary assets go through Git LFS** - `.uasset`, `.umap`, and source art and audio - configured in
+  `.gitattributes` before the first asset is committed. Moving them into LFS later rewrites history.
+- **Lock a `.uasset` or `.umap` before you edit it** (`git lfs lock`, or the editor's source-control
+  integration). Binary assets cannot be merged; without a lock, the second person's work is lost.
+- **Fix up redirectors after a move or rename** (right-click the folder > Fix Up Redirectors) and
+  commit the fix-up with the move, not later.
+- **Never commit** `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` or `.vs/`.
+- **Git + LFS with locking suits a small, engineering-led team; Perforce with exclusive checkout suits
+  a team with artists editing daily.** Decide in the README. Either way, keep feature branches short -
+  binary assets diverge and cannot be merged back.
+- **One File Per Actor** ends level merge conflicts and creates thousands of small files; budget for
+  that on Git.
+- **Rename a C++ class or property with a Core Redirect in the same commit** (3.8).
+- **Commit messages:** an imperative summary under 72 characters, prefixed by the system -
+  `Quest: Reset transition phase on map arrival`. A body when the why is not obvious. One logical
+  change per commit.
+
+### 14.4 Automated tests
+
+- **Pure logic gets an automation test** - `IMPLEMENT_SIMPLE_AUTOMATION_TEST` or the spec form
+  (`BEGIN_DEFINE_SPEC`), named `<Project>.<System>.<Case>`, run from the Session Frontend or the
+  `Automation RunTests` command. Parsers, save migration, economy maths and anything with a bug
+  history come first.
+- **Gameplay flow gets a functional test** - an `AFunctionalTest` actor in a dedicated test map, which
+  runs the real systems and calls `FinishTest` with a result.
+- **A bug fix adds the test that would have caught it**, wherever the bug is testable.
+- **Tests run before a merge to the main branch.** A failing test blocks the merge.
+- **Test pure logic first** - damage rules, inventory rules, save migration, state machines.
+  Functional tests are slow and brittle; add them for flows that have broken before, not for coverage.
+
+### 14.5 Continuous integration
+
+Every gate fails the build, or it is theatre.
+
+| Tier | Time | Contents |
+|---|---|---|
+| Every commit | ~10 min | Compile (editor and game), automation tests, asset validators (18), reference budget check |
+| Nightly | 1-2 h | Cook and package, dedicated server build, perf and memory against budget (13.9), functional tests |
+| Weekly | Longer | Test and Shipping builds on every platform, a full clean cook, loading archived saves from every shipped version (9.14) |
+
+- **Commandlets used in CI return non-zero on failure** and never prompt, open a dialog or wait for
+  input - run them with `-unattended -nopause -nosplash`.
+- **Archive symbols for every build from day one**, and bake the version and changelist into the
+  binary. A crash without symbols is a list of hex addresses.
+- **Instrument telemetry before you need it** - frame-time percentiles, crash rate, load times - and
+  collect nothing you cannot name a decision for.
+- **Pre-ship, every check runs in a packaged Shipping build on the lowest target platform.** The
+  editor is not your game.
+
 ---
 
 ## 15. Debugging playbook
 
 Before you spend an hour on a mystery, work down this list:
 
-1. **Did you clean rebuild?** Hot Reload does not reliably propagate new delegate declarations,
-   constructor default changes, new `UPROPERTY`/`UFUNCTION`, new classes, or `.Build.cs` edits. The
-   failure is silent - stale reflection data, so the thing you just wrote behaves as if it does not
-   exist. **If something you just wrote appears to do nothing, rebuild before you debug anything
-   else.**
+1. **Did you do the right kind of build?** Live Coding patches function bodies in a running editor.
+   It is for function bodies only: treat **any header change** as needing more - especially new or changed `UPROPERTY` /
+   `UFUNCTION` / `USTRUCT` / `UENUM`, delegate declarations, new classes, class layout, or
+   constructor defaults (the CDO is already built). Those need **a normal build with the editor
+   closed**. A `.Build.cs`, `.uproject` or `.uplugin` module change also needs **regenerated project
+   files**. The failure is silent - the thing you just wrote behaves as if it does not exist. **If
+   something you just wrote appears to do nothing, do an editor-closed build before you debug
+   anything else.** Deleting `Intermediate/` and `Binaries/` is a last resort for a corrupted build,
+   not a routine step - it is slow and almost never the fix.
 2. **Is the property null because you spawned raw C++?** `SpawnActor<T>(T::StaticClass())` bypasses
    the Blueprint CDO entirely.
 3. **Is the delegate the right kind?** Non-dynamic delegates are invisible to Blueprint.
@@ -1700,8 +2627,10 @@ Before you spend an hour on a mystery, work down this list:
 
 13. **Is the state change guarded by `HasAuthority()`?**
 14. **Is `bReplicates` set, and was it set in the constructor?**
-15. **Is the property registered in `GetLifetimeReplicatedProps`?** An unregistered `Replicated`
-    property never replicates and never warns.
+15. **Is the property registered in `GetLifetimeReplicatedProps`?** By default in UE 5.7 an
+    unregistered property is auto-registered with no condition - it replicates, but to everyone,
+    ignoring the condition you meant. With auto-registration off it never replicates. Neither case
+    warns unless the project enabled the ensure (11.3).
 16. **Is an `OnRep_` handler expected to run on the server?** It does not - call it explicitly there.
 17. **Does the client own the actor** it is calling a `Server` RPC on? For a multicast, is the actor
     replicating and net-relevant to that client?
@@ -1712,17 +2641,21 @@ Before you spend an hour on a mystery, work down this list:
 
 19. **Is the asset referenced from anything the cooker can see?** An asset only reached by a string
     path or an unreferenced soft path is not cooked. It exists in the editor and is absent in the
-    build.
+    build. Register its type with the Asset Manager (13.3).
 20. **Is it `WITH_EDITOR`-only code, or an editor-only module?** It compiles out, and whatever
     depended on it silently does nothing.
-21. **Is it a `check()` or `ensure()` you are relying on?** `check` is compiled out in Shipping.
-    Logic must never live inside one.
+21. **Is logic living inside a `check()`?** Its expression is not evaluated in Shipping, so the side
+    effect vanishes. `verify` and `ensure` still evaluate theirs (3.9).
 22. **Did you test the actual configuration?** Development and Shipping differ in asserts, logging
     and optimisation. "It worked in Development" is not a packaged-build result.
 
 **Always:**
 
 23. **Check the log.** Filter the Output Log by the system's category before you set a breakpoint.
+24. **Suspect a missing `UPROPERTY` or a dangling pointer?** Run with `gc.CollectGarbageEveryFrame 1`
+    - the bug surfaces on the next frame instead of an hour later.
+25. **Slow, or hitching?** Start from `stat unit` (13.2) and the hitch table (13.5), not from the code
+    you suspect.
 
 ---
 
@@ -1766,12 +2699,16 @@ state for the rest of the session.
 
 ### Movement and animation
 
-**`SetActorLocationAndRotation` breaks CharacterMovementComponent.** Direct location writes leave
-`GetVelocity()` returning zero, which breaks every AnimBP blend space downstream. Fix: override
-`GetVelocity()` to return your scripted velocity while scripted movement is active.
+**`SetActorLocationAndRotation` breaks CharacterMovementComponent.** Direct location writes bypass
+the movement component, so `GetVelocity()` stays at zero and every AnimBP blend space downstream
+reads idle. Fix: **move through the movement component** - a root motion source
+(`FRootMotionSource_MoveToForce` and its siblings) for scripted moves, or `AddMovementInput` /
+setting `movementComp->Velocity` each frame. Do not override `GetVelocity()` to fake it: movement,
+network prediction and everything else that reads the component still sees zero.
 
 **A Blend Space Player wired to `Ground Speed` outputs an idle pose under scripted movement**, for the
-same reason. Wire it to a variable you set to the intended speed while scripted movement is active.
+same reason, and the same fix cures it. If a move genuinely cannot go through the component, drive the
+blend from an AnimBP variable set to the intended speed.
 
 **A montage needs `Enable Auto Blend Out = ON` or `Montage_SetEndDelegate` never fires.** Any listener
 waiting on that delegate parks forever. If you have a paired `DoThing` / `OnDoThingComplete` contract,
@@ -1830,8 +2767,8 @@ only ever succeeds when some *other* surface loaded the same asset first.
 they had not showed the authored blank brush. It surfaced first in a search view - the one place that
 lists people you have never visited - and read as missing content rather than a missing load.
 
-Use `!IsNull()` to test "is anything assigned", or just call `LoadSynchronous` and null-check the
-result. Reserve `IsValid()` for "is it already resident", e.g. deciding whether an async load is
+Use `!IsNull()` to test "is anything assigned", then load it asynchronously (10.3) - or, in
+editor tools and behind loading screens only, call `LoadSynchronous` and null-check the result. Reserve `IsValid()` for "is it already resident", e.g. deciding whether an async load is
 needed at all.
 
 **A wire enum whose zero value is a real state makes its own fallback unreachable.** `TryGetField` and
@@ -1944,6 +2881,35 @@ update-frequency override set in Blueprint Class Defaults - so the actor replica
 rate, or not at all. Same cause, different symptom, and harder to spot because the actor otherwise
 appears to work.
 
+### Collision and input
+
+**Overlap events need `bGenerateOverlapEvents` on both components.** If either side of the pair has
+it off, `OnComponentBeginOverlap` never fires - no warning, and the collision responses can look
+perfectly correct. Check both components, and that each responds `Overlap` to the other's object
+type, before you debug the handler.
+
+**Enhanced Input `Started` and `Completed` are separate trigger events.** A hold action - sprint, aim,
+charge - bound only to `Started` begins and never ends; bound to `Triggered` it fires every frame
+while held. Bind a start handler to `Started` and a stop handler to `Completed`, and to `Canceled` if
+the action has a trigger that can cancel.
+
+**Overlaps fire per component pair, not per actor.** An actor with two overlapping primitives fires
+twice. Filter on the component, or de-duplicate by actor.
+
+**`bTraceComplex` traces can miss in a cooked build** when the mesh's complex collision was not
+cooked. Test traces in a packaged build.
+
+**`FHitResult::GetActor()` can be null** - a hit on BSP, landscape or a destroyed actor. `IsValid()`
+it. Use `ImpactPoint` / `ImpactNormal` for effects and decals; `Location` / `Normal` belong to the
+sweep and are for movement.
+
+**Physics is not deterministic across machines.** Keep simulated physics out of anything
+gameplay-critical on a networked project, and read physics results in `TG_PostPhysics`, never
+`TG_PrePhysics`.
+
+**There are 18 custom collision channels, and they cannot be renumbered.** Budget them on day one:
+an object channel is what a thing *is*; a trace channel is a kind of *question*.
+
 ### Formatting and media
 
 **`FDateTime::ToString` and `ToFormattedString` are different functions with different token tables.**
@@ -1968,8 +2934,9 @@ Use `ToFormattedString` for anything a player reads; reserve `ToString` for ISO 
 
 **Build and verify**
 
-- [ ] It compiles, and you **clean rebuilt** if you touched a delegate declaration, a constructor
-      default, a `UPROPERTY`/`UFUNCTION`, a new class, or a `.Build.cs`
+- [ ] It compiles, and you did an **editor-closed build** (not Live Coding) if you touched
+      reflection, a delegate declaration, a constructor default or a new class - plus **regenerated
+      project files** for a `.Build.cs` change (15, item 1)
 - [ ] You **played it in PIE** - not just compiled it
 - [ ] No new warnings in the Output Log from your code
 - [ ] If an assistant wrote any of it, **you have read every line** and it meets every rule below
@@ -1979,10 +2946,18 @@ Use `ToFormattedString` for anything a player reads; reserve `ToString` for ISO 
 
 - [ ] Header sections in the mandatory order, variables before functions
 - [ ] No inline initialisation in any `.h` - defaults are in the constructor, structs included
-- [ ] `TObjectPtr` on every `UPROPERTY` object reference
+      (`static constexpr`, default arguments and enumerator values excepted - 3.2)
+- [ ] Every struct with number, bool, enum or pointer fields has a constructor that sets them (4.6)
+- [ ] `TObjectPtr` on every `UPROPERTY` object reference; every `UObject*` member is a `UPROPERTY`
+      or `TWeakObjectPtr`; no `AddToRoot` (3.8)
+- [ ] `UObject` pointers tested with `IsValid`, not `!= nullptr` (3.4)
+- [ ] No logic inside `check()` (3.9)
+- [ ] Nothing world- or asset-dependent in a constructor; `OnConstruction` is idempotent (3.2, 3.11)
 - [ ] Forward declares in headers, includes in the `.cpp`, nothing implicit
 - [ ] Soft references by default; every hard reference is deliberate
-- [ ] `const` correct; no new Tick without a self-disable; no magic numbers
+- [ ] `const` correct; no magic numbers; any new Tick was approved first, is commented, and
+      self-disables; no empty or polling tick left registered (3.7, 3.12)
+- [ ] Debug draws inside `#if ENABLE_DRAW_DEBUG` and behind a runtime toggle (3.7)
 
 **Naming**
 
@@ -1998,13 +2973,19 @@ Use `ToFormattedString` for anything a player reads; reserve `ToString` for ISO 
 - [ ] Designer-facing properties have an `Initialize|...` Category
 - [ ] Debug toggles are under `Initialize|Debug`, not a top-level `Debug`
 - [ ] Runtime-only readouts are `Runtime|...`
+- [ ] Designer-facing numbers carry `ClampMin` / `ClampMax` and `ForceUnits` (3.3)
 
 **Architecture**
 
 - [ ] The new state has exactly one owner - you did not add a second path that completes it (9.4)
-- [ ] No `switch` on slot, item type or identity - handler map instead (9.2)
+- [ ] No `switch` on slot, item type or identity - a GameplayTag-keyed map or polymorphic
+      DataAssets instead (9.2)
 - [ ] Adding the *second* one of this thing is a content change, not a code change (9.2)
-- [ ] Service logic is in a GameInstance subsystem, not in GameMode (9.1)
+- [ ] Service logic is in a GameInstance or World subsystem; GameMode holds only match rules (9.1)
+- [ ] Any conflict with a pillar or rule was raised in a `CONFLICT` block before the code (14.1)
+- [ ] Abilities live in components; player `Do*` handlers only forward input (9.9)
+- [ ] New state sits in its home per the ownership map (9.11); no `GetPlayerController(World, 0)`
+- [ ] Any design pattern used is in the catalogue (9.10), or was agreed in a `CONFLICT` block
 - [ ] Anything that must survive a map load lives on the GameInstance side (9.5)
 
 **Comments**
@@ -2017,10 +2998,12 @@ Use `ToFormattedString` for anything a player reads; reserve `ToString` for ISO 
 
 **Logging**
 
-- [ ] Category declared with `DEFINE_LOG_CATEGORY_STATIC` in the `.cpp`, named `Log<Proj><Domain>`
-- [ ] `UE_LOGFMT` with named tokens, not `UE_LOG`, in new code
-- [ ] Every line has class, function, description and a context value
-- [ ] Every guard-clause early return logs
+- [ ] Category declared with `DEFINE_LOG_CATEGORY_STATIC` in the `.cpp` unless several files share
+      it (6.2), named `Log<Project><Domain>`
+- [ ] `UE_LOGFMT`, not `UE_LOG`, in new and modified lines, with arguments in token order (6.5)
+- [ ] Every line has class, function, description and a context value - `GetNameSafe`, never
+      `GetName()`; enums via `UEnum::GetValueAsString` (6.1)
+- [ ] Every failure guard-clause return logs; expected early-outs are `Verbose` or silent (6.6)
 - [ ] Correct severity; nothing at `Log` level inside a per-frame path
 
 **Async and threading**
@@ -2032,13 +3015,24 @@ Use `ToFormattedString` for anything a player reads; reserve `ToString` for ISO 
 - [ ] Every async and load callback resolves the weak pointer once, null-checks it, and checks
       `GetWorld()` before touching anything world-dependent
 - [ ] Every `FTimerHandle` stored and cleared in teardown; every delegate unbound
+- [ ] Delegates bound from a `UObject` use `AddUObject` / `AddWeakLambda`, never `AddLambda`
+      capturing `this` (9.3)
+- [ ] Every async load stores its handle and has a fallback for the not-loaded window; no gameplay
+      path calls `LoadSynchronous` (10.3)
+- [ ] Worker-thread code follows gather, compute, apply; AnimBP derivation is in the thread-safe
+      update (10.4, 10.6)
 - [ ] Any new `FRunnable` is stopped and joined from its owner's teardown
 
 **Networking** (if the project replicates)
 
 - [ ] Every replicated state change guarded by `HasAuthority()`
 - [ ] `bReplicates` set in the constructor, not later
-- [ ] Every `UPROPERTY(Replicated*)` registered in `GetLifetimeReplicatedProps`
+- [ ] Every `UPROPERTY(Replicated*)` registered in `GetLifetimeReplicatedProps`, and the project
+      runs with the missing-registration ensure on (11.3)
+- [ ] `Super::GetLifetimeReplicatedProps` called; state a late joiner needs is a property, not an
+      RPC (11.3)
+- [ ] Server RPCs carry intent, never outcome, and `_Implementation` re-checks the rules (11.4)
+- [ ] Dormant actors are flushed before they change (11.5)
 - [ ] Replication condition chosen deliberately - `COND_OwnerOnly` where only the owner needs it
 - [ ] `OnRep_` named after its property, and called explicitly on the authority where the response is
       needed there too
@@ -2051,6 +3045,12 @@ Use `ToFormattedString` for anything a player reads; reserve `ToString` for ISO 
 - [ ] RPC prefixes correct: `Server` / `Client` / `Multicast` / `OnRep_` (11.6)
 - [ ] Tested with two clients, and once as a dedicated server rather than only a listen server
 
+**Performance**
+
+- [ ] A new subsystem has its CPU scope, counters, CSV stat and LLM tag (13.6)
+- [ ] Any optimisation has a before and an after capture, from a Test build on the target (13.2)
+- [ ] Anything numerous and short-lived is pooled (13.4)
+
 **Content**
 
 - [ ] New assets carry the correct type prefix and PascalCase name (7.1-7.3)
@@ -2059,10 +3059,26 @@ Use `ToFormattedString` for anything a player reads; reserve `ToString` for ISO 
       references it
 - [ ] Blueprint variables have tooltips and categories; graphs have comment boxes
 - [ ] No new hard references to heavy assets in a widely-instanced Blueprint
+- [ ] Widget bind names are `<role>_<Type>`, identical in UMG and C++ (7.4)
+- [ ] Player-facing text is `FText` - `LOCTEXT` and `FText::Format`, no concatenation (12.5)
+- [ ] New DataAsset types override `IsDataValid` and are registered with the Asset Manager (6.7,
+      13.3)
+- [ ] Binary assets you edited were locked; redirectors fixed up after any move (14.3)
 
 **Docs**
 
 - [ ] Docs updated in the same commit if you changed a documented system
+
+**Reviewer's scan** - what a general C++ reviewer misses in Unreal code:
+
+a `UObject*` member without `UPROPERTY` - `!= nullptr` instead of `IsValid` - gameplay in a
+constructor - a missing `Super::` call - an unbound delegate - Tick that should be an event - a
+runtime component without `RegisterComponent` - a mutation without `HasAuthority` - an unvalidated
+Server RPC - a multicast where state was needed - a dormancy change without a flush - a new hard
+reference - `LoadSynchronous` in gameplay - a dropped streamable handle - game rules in Blueprint -
+an expensive `BlueprintPure` - a call to `_Implementation` - a `UObject` touched off the game thread -
+`check()` with a side effect - `FText::FromString` on player text - an unversioned save format -
+`GetPlayerController(World, 0)`.
 
 ---
 
@@ -2076,20 +3092,50 @@ A short checklist for project setup, so the standard is in place before the firs
 - [ ] Source folder skeleton in place - 1.3
 - [ ] Content root `Content/_<Project>/` created, folder skeleton in place - 2.1
 - [ ] Project short name pinned, for class infixes and short variable names - 4.4, 4.8
-- [ ] Log category naming pinned: `Log<Proj><Domain>`, declared with `DEFINE_LOG_CATEGORY_STATIC` - 6.2
+- [ ] Log category naming pinned: `Log<Project><Domain>`, `DEFINE_LOG_CATEGORY_STATIC` by default - 6.2
 - [ ] GameplayTag root namespaces agreed - 4.10
-- [ ] Console command namespace pinned: `<proj>.<system>.<verb>` - 4.11
+- [ ] Console command namespace pinned: `<Project>.<system>.<verb>`, lowercased - 4.11
 - [ ] A `TEMP/` or `Developers/` content folder created, so prototypes have somewhere legitimate to
       live - 8.2
 - [ ] **Replication decided and written down in the README** - "this project replicates" or "this
       project is single-player". Retrofitting it later is a rewrite, and a half-answer produces code
       that is authority-aware in some places and not others - 11.1
-- [ ] A project `README.md` that fills in every `<Project>` placeholder in this document and links
-      back to it
+- [ ] On a replicated project: push model and Iris decided, and the missing-registration CVars set
+      in `DefaultEngine.ini` - 11.3, 11.8
+- [ ] Git LFS and `.gitattributes` in place before the first asset commit; locking on for `.uasset`
+      and `.umap` - 14.3
+- [ ] Data-driven asset types registered as Primary Asset Types - 13.3
+- [ ] Frame budget per target written down, with line items and owners - 13.2
+- [ ] Version control chosen (Git + LFS or Perforce) - 14.3
+- [ ] CI tiers in place: every commit, nightly, weekly - 14.5
+- [ ] A project `README.md` that fills in every `<Project>` placeholder in this document, lists every
+      project override with its section number and reason, and links back to this document
+
+**Enforcement tooling** - so the mechanical rules are checked by a tool, not by memory
+
+- [ ] `tooling/.clang-format` and `tooling/.editorconfig` from this repository copied to the project
+      root (3.10)
+- [ ] A `.clang-tidy` with `readability-identifier-naming` for the case rules in 4.1, as far as it
+      can express them
+- [ ] `tooling/Validators/AssetNamingValidator` installed in the project's editor module (steps in
+      `tooling/README.md`). It fails any asset under `Content/_<Project>/` without its 7.1 prefix or
+      with a non-PascalCase name, on save and in CI (14.5)
+- [ ] **Blueprint lint**, as further validators when the project needs them: `Event Tick` without an
+      approval comment (3.12), a node-count budget per graph, `Cast To` a Blueprint class (8.3), hard
+      references past the reference budget (13.3)
+- [ ] A reference-budget commandlet that fails CI when an asset's hard-dependency size passes its
+      budget - set budgets just above today's values and ratchet them down
+- [ ] The rules no tool can check - header order, comment content, the pillars - listed in the pull
+      request template
 
 **Ongoing**
 
-- [ ] A project-level `CLAUDE.md` or equivalent, so assistants follow the same rules as people
+- [ ] A project-level `CLAUDE.md` or equivalent, so assistants follow the same rules as people.
+      Point it at the sections that apply - a single-player project skips 11 - rather than the whole
+      document.
+- [ ] A **canonical examples** list in the README: for each recurring pattern, the real class that
+      implements it well - "countdowns: follow the time-bomb timer on the ball actor". Pointing at
+      working code beats describing it, and it stands in for the invented class names used here.
 - [ ] A living document of project-specific decisions and traps - the section 16 of *that* project.
       Every trap you hit that is not in this document belongs there, and the genuinely engine-general
       ones belong back in **this** document.
@@ -2099,3 +3145,41 @@ A short checklist for project setup, so the standard is in place before the firs
 *This document is the team standard, not one project's convention. If you find a rule here that is
 wrong, or a trap that is missing, change it here - so the next project starts from what we learned on
 this one.*
+
+---
+
+## Changelog
+
+**1.2 - 2026-09-10**
+
+- Added material from the *Unreal Architect Track* and *Unreal Performance Track* (UE 5.8), checked
+  against engine source where it went in as fact: compile-time gating and plugins (1.4, 1.5); the CDO,
+  Details-panel design, pointer choice, Core Redirects, the actor lifecycle and tick (3.2-3.12); native
+  gameplay tags (4.10); the Blueprint boundary tests (8.1, 8.3); the pattern catalogue, ownership map,
+  subsystem design, input, save versioning, GAS and AI (9.10-9.15); gather-compute-apply and the
+  animation thread rule (10.4, 10.6); replication, prediction and server rules (11.3-11.9); UI
+  architecture (12.6); performance method, memory, hitches, instrumentation, content, server and
+  regression gates (13.2-13.9); CI (14.5); collision traps (16); the reviewer's scan (17).
+- Replaced "project overrides" with an explicit order for which document wins.
+- Added `tooling/`: `.clang-format`, `.editorconfig` and an asset-naming validator.
+- Re-checked the replication, push-model and Iris defaults in 5.8: unchanged from 5.7.
+
+**1.1 - 2026-09-10**
+
+- Checked engine claims against UE 5.7 source. Corrected three: `UE_LOGFMT` tokens match by position,
+  not name (6.5); reflected struct fields are not zeroed outside engine allocation (4.6); an
+  unregistered replicated property is auto-registered by default, and the missing-registration
+  ensure is off by default (11.3).
+- Resolved contradictions: comment and logging cleanup both apply to new and modified code only
+  (5.4, 6.5); header-initialisation exceptions (3.2); one widget bind-name form (7.4); delegate member
+  naming (4.7); underscores in function names (11.6); what replaces a switch (9.2).
+- Replaced Hot Reload guidance with Live Coding and editor-closed builds (section 15, item 1).
+- Added: ranked architecture pillars; the `CONFLICT` block (14.1); object lifetime and GC (3.8);
+  assertions (3.9); formatting (3.10); project settings, interfaces, responsibility chains and input
+  adapters (9.6-9.9); push model and Iris (11.8); player-facing text (12.5); cooking (13.3); source
+  control (14.3); automated tests (14.4); missing asset prefixes (7.1); `GetNameSafe`, enum and
+  `UE_CLOGFMT` logging rules (6.1); Tick approval, clamps and units (3.3, 3.7); collision and input
+  traps (16); enforcement tooling and canonical examples (18).
+- Added the version, placeholder and project-override rules at the top.
+
+**1.0 - 2026-08-27** - First team standard.

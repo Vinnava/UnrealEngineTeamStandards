@@ -1,0 +1,49 @@
+# Team clang-format - standard section 3.10. Copy to the project root.
+# Epic style: tabs, braces on their own line. Includes are never reordered, so .generated.h stays last (3.4).
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: Latest
+
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 120
+
+BreakBeforeBraces: Allman
+AccessModifierOffset: -4
+IndentCaseLabels: true
+NamespaceIndentation: All
+FixNamespaceComments: true
+
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Empty
+
+BreakConstructorInitializers: BeforeComma
+AlwaysBreakTemplateDeclarations: Yes
+SpaceBeforeParens: ControlStatements
+SpacesBeforeTrailingComments: 1
+
+SortIncludes: Never
+IncludeBlocks: Preserve
+
+# Two-line comments are written deliberately (5.2); never rewrap them
+ReflowComments: false
+
+# Reflection macros have no trailing semicolon; treat them as statements so the next line is not glued on
+StatementMacros:
+  - GENERATED_BODY
+  - GENERATED_UCLASS_BODY
+  - GENERATED_USTRUCT_BODY
+  - UCLASS
+  - USTRUCT
+  - UENUM
+  - UINTERFACE
+  - UPROPERTY
+  - UFUNCTION
