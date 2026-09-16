@@ -107,7 +107,7 @@ def check_encoding() -> None:
 
 def check_checklist_citations() -> None:
     """Every review-list item names the rule it came from, so a rule change is greppable (17.2)."""
-    path = ROOT / "rules" / "13-checklists.md"
+    path = ROOT / "rules" / "17-review.md"
     inside = False
     item, item_line = "", 0
 
@@ -133,6 +133,36 @@ def check_checklist_citations() -> None:
         elif not line.strip():
             flush()
             item, item_line = "", 0
+
+
+def check_file_numbering() -> None:
+    """A rule file is named for the sections it holds, so a number means one thing everywhere.
+
+    rules/11-networking.md holds section 11; rules/05-06-comments-logging.md holds 5 and 6. Before
+    1.8 the file numbers were a second, unrelated sequence - 16-online.md held section 21 while
+    "section 16" meant the engine traps - and a reader could not tell which scheme a number was in.
+    """
+    for path in sorted((ROOT / "rules").glob("*.md")):
+        prefix = re.match(r"^((?:\d{2}-)+)", path.name)
+        if not prefix:
+            errors.append(f"rules/{path.name}: no NN- prefix, so it claims no sections")
+            continue
+        claimed = {str(int(n)) for n in prefix.group(1).rstrip("-").split("-")}
+        # A file holds a section if it has that section's own heading ("## 15.") or any of its
+        # subsections ("### 15.2"). Section 15 is a numbered playbook with no N.M headings at all,
+        # so matching only the N.M form would call its file a liar.
+        held = {match.group(1)
+                for match in (re.match(r"^#{1,4}\s+(\d{1,2})(?:\.\d{1,2})?[.\s]", line)
+                              for line in path.read_text(encoding="utf-8").splitlines())
+                if match}
+        if not held:                       # 00-core.md and any other prose-only file
+            continue
+        if not held <= claimed:
+            errors.append(f"rules/{path.name}: holds section(s) {sorted(held - claimed)} "
+                          f"that its name does not claim")
+        if not claimed <= held:
+            errors.append(f"rules/{path.name}: name claims section(s) {sorted(claimed - held)} "
+                          f"that it does not hold")
 
 
 def check_index() -> None:
@@ -164,6 +194,7 @@ def main() -> int:
     check_links()
     check_encoding()
     check_checklist_citations()
+    check_file_numbering()
     check_index()
 
     for warning in warnings:

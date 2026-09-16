@@ -1,5 +1,47 @@
 # Changelog
 
+**1.8 - 2026-09-17**
+
+**Every rule file is now named for the sections it holds.** A number means one thing everywhere.
+
+Until now the files carried their own sequence, unrelated to the sections inside them, and the two
+collisions landed on the most cross-referenced sections in the standard: `16-online.md` held section
+21 while "section 16" is the engine traps, and `17-upgrades.md` held section 22 while section 17 is
+the commit checklist. 1.7 tried to fix this with a README sentence saying a bare number always means
+a section. That was the wrong fix - the reader who needs the sentence has already misread the number.
+
+| Was | Now | Holds |
+|---|---|---|
+| `01-layout.md` | `01-02-layout.md` | 1-2 |
+| `02-cpp.md` | `03-cpp.md` | 3 |
+| `03-cpp-naming.md` | `04-cpp-naming.md` | 4 |
+| `04-comments-logging.md` | `05-06-comments-logging.md` | 5-6 |
+| `05-content-blueprint.md` | `07-08-content-blueprint.md` | 7-8 |
+| `06-architecture.md` | `09-architecture.md` | 9 |
+| `07-async.md` | `10-async.md` | 10 |
+| `08-networking.md` | `11-networking.md` | 11 |
+| `09-ui.md` | `12-ui.md` | 12 |
+| `10-performance.md` | `13-performance.md` | 13 |
+| `11-practice.md` | `14-15-practice.md` | 14-15 |
+| `12-engine-traps.md` | `16-engine-traps.md` | 16 |
+| `13-checklists.md` | `17-gate.md`, `17-review.md`, `18-adopting.md` | 17.1; 17.2-17.4; 18 |
+| `14-audio.md` | `19-audio.md` | 19 |
+| `15-accessibility.md` | `20-accessibility.md` | 20 |
+| `16-online.md` | `21-online.md` | 21 |
+| `17-upgrades.md` | `22-upgrades.md` | 22 |
+
+No section number changed, and no rule changed meaning. All 60 internal references were rewritten,
+and the files were moved with `git mv`, so history follows them.
+
+- **`check_file_numbering` in `tooling/check-standard.py` now fails the build** when a file's name and
+  its sections disagree, so this cannot come back. Mutation-tested both ways: a heading moved into the
+  wrong file, and a file renamed away from its sections.
+- **The commit gate is its own file.** `17-gate.md` is 17.1, the twelve items, and is the only part of
+  the checklists worth carrying on every request. `17-review.md` (17.2-17.4) is read when reviewing;
+  `18-adopting.md` once when a project starts. The always-loaded set drops from **24.4k to 20.4k
+  tokens** - 4.1k saved on every request, 17 per cent.
+- **Added `.gitignore`** for `__pycache__`, which the checker creates.
+
 **1.7 - 2026-09-17**
 
 A review pass. The contradictions below were all real: a rule stating one thing while the example
@@ -101,15 +143,15 @@ easier to admire than to comply with.
 - **Adoption is now tiered** (18.1-18.3). Tier 1 is the ten decisions that are expensive or
   impossible to reverse; Tier 2 is production discipline; Tier 3 is scale. A two-person prototype
   does Tier 1 and stops. 18.4 is new: how to retrofit onto an existing codebase.
-- **New section 19, [Audio](rules/14-audio.md)** - intent from gameplay, mandatory concurrency caps,
+- **New section 19, [Audio](rules/19-audio.md)** - intent from gameplay, mandatory concurrency caps,
   mixing in classes rather than call sites, one owner per loop.
-- **New section 20, [Accessibility and localisation](rules/15-accessibility.md)** - subtitles, colour
+- **New section 20, [Accessibility and localisation](rules/20-accessibility.md)** - subtitles, colour
   as a channel, remapping, text scale, photosensitivity, plurals, expansion budget, pseudo-loc.
   Both are cert items and both constrain layout before the first screen exists.
-- **New section 21, [The online module](rules/16-online.md)** - 1.1 created the module and gave it no
+- **New section 21, [The online module](rules/21-online.md)** - 1.1 created the module and gave it no
   rules. Wire boundary, timeouts and backoff, never trusting a response, secrets, transport, offline
   behaviour, and a fake backend for tests.
-- **New section 22, [Engine upgrades](rules/17-upgrades.md)** - the re-verification list naming every
+- **New section 22, [Engine upgrades](rules/22-upgrades.md)** - the re-verification list naming every
   version-pinned claim in this standard and where to re-check it. Without it, the engine claims rot
   and the document becomes the folklore it was written to replace.
 - **The two-line comment rule is a budget, not an absolute** (5.2). It was wrong in one direction: a

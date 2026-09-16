@@ -1,0 +1,3 @@
+# Python bytecode from tooling/check-standard.py
+__pycache__/
+*.pyc

@@ -9,18 +9,25 @@ only in the project README is a rule the assistant never sees.
 ## The standard
 
 @standards/rules/00-core.md
-@standards/rules/01-layout.md
-@standards/rules/02-cpp.md
-@standards/rules/03-cpp-naming.md
-@standards/rules/04-comments-logging.md
-@standards/rules/05-content-blueprint.md
-@standards/rules/06-architecture.md
-@standards/rules/11-practice.md
-@standards/rules/13-checklists.md
+@standards/rules/01-02-layout.md
+@standards/rules/03-cpp.md
+@standards/rules/04-cpp-naming.md
+@standards/rules/05-06-comments-logging.md
+@standards/rules/07-08-content-blueprint.md
+@standards/rules/09-architecture.md
+@standards/rules/14-15-practice.md
+@standards/rules/17-gate.md
 
-Add the optional files this project needs - `07-async`, `08-networking` if it replicates, `09-ui`,
-`10-performance`, `12-engine-traps`, `14-audio`, `15-accessibility`, `16-online` if it talks to a
-backend, `17-upgrades` at upgrade time. Delete the ones it does not.
+Add the optional files this project needs - `10-async`, `11-networking` if it replicates, `12-ui`,
+`13-performance`, `16-engine-traps`, `19-audio`, `20-accessibility`, `21-online` if it talks to a
+backend, `22-upgrades` at upgrade time. Delete the ones it does not.
+
+**Every file is named for the sections it holds**, so `11-networking.md` is section 11 and
+`05-06-comments-logging.md` is sections 5 and 6. A number means the same thing everywhere.
+
+`17-review.md` and `18-adopting.md` are deliberately **not** imported: the first is read when
+reviewing, the second once when the project starts. `17-gate.md` is the twelve-item commit gate and
+is the one worth carrying on every request.
 
 `00-core.md` is not optional. It carries the ranked pillars every `CONFLICT` block is decided by, the
 precedence order, and the `<Project>` convention.

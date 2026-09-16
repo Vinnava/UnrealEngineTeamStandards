@@ -639,6 +639,23 @@ character, with no warning - which is why every format string is verified in PIE
 
 ## 17-18. Checklists
 
+**Why the file names carry section numbers.** Until 1.8 the rule files were numbered in their own
+sequence, unrelated to the sections inside them - `16-online.md` held section 21 while "section 16"
+meant the engine traps, and `17-upgrades.md` held section 22 while section 17 was the commit
+checklist. Those two are the most cross-referenced sections in the standard, so the collision landed
+exactly where it did the most damage. 1.7 tried to fix it with a sentence in the README saying a bare
+number always means a section; that does not work, because the reader who needs the sentence is the
+one who has already misread the number. Renaming the files so the number means one thing everywhere
+removes the ambiguity rather than documenting it, and `check_file_numbering` in
+`tooling/check-standard.py` now fails the build if a file and its sections ever disagree again.
+
+**Why the commit gate is its own file.** 17.1 is twelve items and is needed on every commit; 17.2 is
+a long review list and 18 is read once when a project starts. Keeping them in one file meant an
+assistant carried about 4k tokens of review-and-setup material on every request in order to have the
+twelve-item gate. Splitting them is the difference between the gate being cheap enough to always
+load and being the reason someone drops the checklists from their imports entirely.
+
+
 **17. Why the gate is twelve items.** Until 1.5 the pre-commit checklist was 81 boxes. Nobody runs 81
 boxes before a commit, so in practice nobody ran any, and a checklist people skip teaches that the
 standard is advisory. The twelve are the ones where no tool can help and where being wrong is
