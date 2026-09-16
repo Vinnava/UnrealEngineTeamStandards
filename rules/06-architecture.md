@@ -33,7 +33,10 @@ is in [why.md](../why.md).
 
 - **No switch statements on identity** (slot, item type, state). Use one of:
   - **A map keyed by `FGameplayTag`**, authored in a DataAsset -
-    `TMap<FGameplayTag, TObjectPtr<UItemBehaviourAsset>>`. A new case is a new tag and a new row.
+    `TMap<FGameplayTag, TSoftObjectPtr<UItemBehaviourAsset>>`. A new case is a new tag and a new row.
+    **Soft, per 13.3**: the table is reachable long before any one row is needed, and a hard map
+    pulls every behaviour asset in the game into memory with the first lookup. Resolve the row you
+    matched through the async path in 10.3.
   - **Strategy via polymorphic DataAssets** - the data carries an `Instanced` behaviour object (the
     `UQuestStep_*` family in 4.4) and the caller invokes its virtual.
 - **No enum-keyed `TMap` for content that grows.** An enum key is already a code change and carries
@@ -92,7 +95,9 @@ timer.
 
 - Re-acquire the PlayerController on arrival; do not cache it across the load.
 - Re-add persistent widgets to the viewport; they are dropped even though the object survives.
-- Drive anything time-based from a **subsystem** timer, not a widget tick.
+- Drive anything time-based from a **GameInstance subsystem** timer, not a widget tick - and not a
+  World subsystem's, whose `TimerManager` dies with the world on the map load this section is about
+  (10.5).
 - **What survives travel:** the GameInstance and its subsystems, and each LocalPlayer and its
   subsystems, always. Seamless travel also keeps the PlayerController and PlayerState - the
   PlayerState carries across only what `CopyProperties` copies. The world, its subsystems, the

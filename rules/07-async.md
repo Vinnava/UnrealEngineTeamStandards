@@ -12,7 +12,7 @@ is in [why.md](../why.md).
 Results produced on a background thread are marshalled back before they touch a `UObject`:
 
 ```cpp
-AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask,
+UE::Tasks::Launch(UE_SOURCE_LOCATION,
     [weakSelf = TWeakObjectPtr<UInventorySubsystem>(this), payload = payloadCopy]()
 {
     // Background - heavy work only, no UObject access of any kind
@@ -31,6 +31,10 @@ AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask,
     });
 });
 ```
+
+`UE::Tasks::Launch` starts the work because that is what 10.4 says to reach for first; the return leg
+is `AsyncTask(ENamedThreads::GameThread, ...)` because the game thread is exactly the named thread
+that call is still for.
 
 - **Capture the payload by value.** The background lambda never reaches back into the calling frame.
 - **Assert the contract** in any function that must only run on the Game Thread:

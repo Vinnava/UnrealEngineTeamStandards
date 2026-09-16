@@ -78,6 +78,8 @@ is in [why.md](../why.md).
 
 ### 14.5 Continuous integration
 
+**The every-commit tier is unconditional** - compile and tests are worth it at any size. **The nightly and weekly tiers are `[team-size]`** (18.3): they need hardware that is not somebody's laptop.
+
 Every gate fails the build.
 
 | Tier | Time | Contents |

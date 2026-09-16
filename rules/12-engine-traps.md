@@ -8,7 +8,7 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
 
 ---
 
-### Level transitions and the PlayerController
+### 16.1 Level transitions and the PlayerController
 
 - **`OpenLevel` destroys and recreates the PlayerController.** Anything caching a PC pointer
   re-acquires it on arrival - in `PostLoadMapWithWorld` or from the new PC's `BeginPlay` - before any
@@ -25,7 +25,7 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
 - **A world timer dies on a hard `OpenLevel`.** Anything armed on one that conceptually survives the
   load - a ringing call, a countdown - is resolved explicitly on arrival.
 
-### Movement and animation
+### 16.2 Movement and animation
 
 - **`SetActorLocationAndRotation` breaks CharacterMovementComponent** - `GetVelocity()` stays zero and
   every AnimBP blend space reads idle. **Move through the movement component**: a root motion source
@@ -38,7 +38,7 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
   paired `DoThing` / `OnDoThingComplete` contract, both paths always broadcast - the no-montage path
   synchronously, the montage path on end - and callers bind *before* they call.
 
-### Reflection and data
+### 16.3 Reflection and data
 
 - **`DECLARE_MULTICAST_DELEGATE` is invisible to Blueprint.** Use the `DYNAMIC` form plus
   `UPROPERTY(BlueprintAssignable)` (9.3).
@@ -69,7 +69,7 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
   and friends leave the output untouched on a miss. Reserve enumerator 0 as `Unknown`, with a
   derivation that never invents an accusatory state.
 
-### Widgets and layout
+### 16.4 Widgets and layout
 
 - **A widget in an inactive `UWidgetSwitcher` slot has permanently zero geometry**, and a bounded retry
   cannot fix it. Resolve measurements in the call that makes the widget visible, and delete the
@@ -89,7 +89,7 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
   `barHeight + (maxLines - 1) * lineHeight`. Never author a layout constant that depends on a metric the
   details panel cannot show.
 
-### Async and threading
+### 16.5 Async and threading
 
 - **Resolve a `TWeakObjectPtr` on the Game Thread only** - `.Get()` and `.IsValid()` off it race
   against GC (10.1).
@@ -100,7 +100,7 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
 - **Streaming sub-levels load asynchronously.** Bind to `FWorldDelegates::LevelAddedToWorld` or the
   streaming level's loaded delegate - never poll, never wait a fixed delay.
 
-### Networking
+### 16.6 Networking
 
 - **`ReplicatedUsing` does not fire on the machine that set the value** - on a listen server, the host
   misses the effect. Call the handler explicitly on the authority (11.3).
@@ -113,7 +113,7 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
 - **`SpawnActor<T>(T::StaticClass())` also skips Blueprint `bReplicates` and update-frequency
   overrides** - the actor replicates at the wrong rate, or not at all.
 
-### Collision and input
+### 16.7 Collision and input
 
 - **Overlap events need `bGenerateOverlapEvents` on both components**, and each must respond `Overlap`
   to the other's object type.
@@ -130,7 +130,7 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
 - **There are 18 custom collision channels and they cannot be renumbered.** Budget them on day one: an
   object channel is what a thing *is*; a trace channel is a kind of *question*.
 
-### Formatting and media
+### 16.8 Formatting and media
 
 - **`FDateTime::ToString` has no month-name token** and emits unrecognised tokens as literal
   characters. Use `ToFormattedString` for anything a player reads; `ToString` for ISO and machine

@@ -1,5 +1,57 @@
 # Changelog
 
+**1.7 - 2026-09-17**
+
+A review pass. The contradictions below were all real: a rule stating one thing while the example
+beside it did another, which is the failure mode that teaches people to trust the example.
+
+- **New [rules/00-core.md](rules/00-core.md), and it is now first in the import list.** The ranked
+  pillars, the precedence order and the `<Project>` convention were in the README, which assistants
+  are never given - so an assistant had every rule and nothing to resolve a conflict with, while
+  being told to raise `CONFLICT` blocks against pillars it could not see. The README links to it now
+  instead of holding it.
+- **The override table moved to the project `CLAUDE.md`** (00-core, 8.1, 18.1). Precedence rule 2
+  makes a written override beat this standard, and the assistant only sees the file it is given. An
+  override living only in a project README is an unwritten deviation from where it sits.
+- **Section 16 entries are numbered 16.1 to 16.8.** They were unnumbered, so a cross-reference could
+  only point at the whole file while the README promised stable global numbers.
+- **Four rules are marked `[team-size]`** - 11.7's weekly server build, 13.6's full instrumentation
+  set, 13.9's regression gates, and 14.5's nightly and weekly tiers. Everything unmarked is
+  unconditional, which is the property that makes "nothing here is aspirational" true.
+- **`tooling/project-template/`** ships the three files section 18 asked for and `tooling/` did not
+  have: a project `CLAUDE.md` with the imports and the override table, a `.gitattributes` with LFS
+  **and `lockable`** (without which 14.3's `git lfs lock` does not work), and a pull request template.
+
+Contradictions resolved:
+
+- **3.6's example used `if (!currentStep)` while 3.4 requires `IsValid`** - the most-pasted snippet in
+  the document taught the opposite of the rule. Now `IsValid`.
+- **3.9 called `ensureMsgf` the default and then showed `ensure`.** The example uses `ensureMsgf`.
+- **3.7 said debug draws are off in Shipping and Test.** True only outside the editor:
+  `UE_ENABLE_DEBUG_DRAWING` is `(!(UE_BUILD_SHIPPING || UE_BUILD_TEST) || WITH_EDITOR)`, so an editor
+  build keeps them. The `|| WITH_EDITOR` clause is the part worth knowing, and it is now stated.
+- **The countdown had no way to reach the screen.** 3.7 said `GetTimerRemaining` for display; 12.6
+  bans property bindings and `NativeTick`. 3.7 now names the display timer that pushes the value.
+- **9.2's example was a hard reference inside a DataAsset**, against 13.3. It is `TSoftObjectPtr` now,
+  with the reason.
+- **10.1 taught `AsyncTask` where 10.4 says to reach for `UE::Tasks::Launch` first.** The example
+  launches with `UE::Tasks::Launch` and keeps `AsyncTask(ENamedThreads::GameThread, ...)` for the
+  return leg, which is the named-thread case that call is still for.
+- **9.5 said "a subsystem timer"** where only a GameInstance subsystem works - a World subsystem's
+  timers die with the world, which is the bug the section exists to prevent.
+- **8.1 sent "per-actor gameplay logic" to Blueprint** while its own drift diagnostic calls a
+  Blueprint branching on a game rule the smell. Now "per-actor composition and response".
+- **`PHYS_` is recorded as a deliberate deviation from Epic's `PA_`** (7.1), the second in the
+  standard after camelCase members. It was the only prefix differing from UE5 without saying so.
+
+Tooling:
+
+- **The validator no longer passes an unmapped asset type in silence.** An unknown class returned
+  `NotValidated`, so every new engine type went unnamed forever; it now emits a warning naming the
+  class, so the table grows instead of ageing.
+- **`.editorconfig` gained `[*.ini]`** - Unreal rewrites config files constantly, and trailing-space
+  trimming churned every one the editor touched.
+
 **1.6 - 2026-09-16**
 
 Tooling fixes. 1.5 shipped four enforcement files; none of them had ever been run against the

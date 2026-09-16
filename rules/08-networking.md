@@ -241,7 +241,8 @@ An RPC prefix states **where the function runs**, and is mandatory:
   per feature.
 - **Test as a dedicated server, not only as a listen server.** Default PIE to a dedicated server.
 - **Keep simulated latency and loss on in your normal setup** (`Net PktLag=120`, `Net PktLoss=3`).
-- **Package and run a real dedicated server build weekly** from the first month.
+- **`[team-size]` Package and run a real dedicated server build weekly** from the first month.
+  Weekly needs someone whose job it is; solo, package one before every milestone instead.
 - **On a listen server the host has both authority and local control** - code that handles each
   separately fires twice there.
 - **Watch the bandwidth** with `stat net` and the Network Profiler.

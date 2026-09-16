@@ -227,8 +227,12 @@ that will outlive the prototype.
       commit**; locking on for `.uasset` and `.umap` - 14.3
 - [ ] A `TEMP/` or `Developers/` content folder created, so prototypes have somewhere legitimate to
       live - 8.2
-- [ ] A project `README.md` that fills in every `<Project>` placeholder, lists every project override
-      with its section number and reason, and links back to this standard
+- [ ] A project **`CLAUDE.md`** from [`tooling/project-template/`](../tooling/project-template/),
+      filling in every `<Project>` placeholder, importing `00-core` plus the rule files this
+      project needs, and **holding the override table** - the assistant reads this file, not the
+      README (00-core)
+- [ ] A project `README.md` that links to that override table rather than keeping a second copy,
+      and links back to this standard
 
 ### 18.2 Tier 2 - before the first milestone
 
@@ -242,6 +246,8 @@ retrofit.
       database generated - 3.10, 4.1
 - [ ] [`tooling/Validators/AssetNamingValidator`](../tooling/README.md) installed in the project's
       editor module - 7.1-7.3
+- [ ] [`tooling/project-template/PULL_REQUEST_TEMPLATE.md`](../tooling/project-template/PULL_REQUEST_TEMPLATE.md)
+      copied to `.github/` - the rules no tool can check, sized like 17.1 rather than 17.2
 - [ ] Data-driven asset types registered as Primary Asset Types - 13.3
 - [ ] CI every-commit tier in place: compile, tests, validators - 14.5
 - [ ] Automation tests for the pure logic that exists so far - 14.4

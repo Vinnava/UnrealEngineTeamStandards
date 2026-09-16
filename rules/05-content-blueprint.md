@@ -68,6 +68,13 @@ is in [why.md](../why.md).
 prefix - not `S_`. **The single exception is `HDRI_`**, which a texture authored as an HDRI backdrop
 takes instead of `T_`; the validator accepts either for any texture type.
 
+**`PHYS_` is a deliberate deviation from Epic**, who ship `PA_` (the UE5 templates use
+`PA_Mannequin`). It is here because `PA_` reads as "Physics Asset" only if you already know, while
+`PHYS_` sorts and searches on the word people actually say. `SKM_` and `SK_` follow UE5, so this is
+the second knowing deviation in the standard, after camelCase members (4.1). A project that would
+rather match Epic writes `PA_` as an override with this section number, and changes the one row in
+`AssetNamingValidator`.
+
 ### 7.2 Blueprint role infixes
 
 Core-framework Blueprints carry a second segment naming their role:
@@ -151,11 +158,11 @@ Everything else is simply `BP_<Thing>`: `BP_PortalTrigger`, `BP_Wardrobe`, `BP_A
 
 - **System architecture in Blueprint is never acceptable.**
 - The gameplay half is the default split. A C++-first project may keep gameplay flow in C++ and
-  record that as a project override (README). No project chooses per feature.
+  record that as a project override (`CLAUDE.md`). No project chooses per feature.
 
 | Belongs in C++ | Belongs in Blueprint |
 |---|---|
-| Subsystems and services | Per-actor gameplay logic |
+| Subsystems and services | Per-actor composition and response |
 | Interfaces and data shape | Visual and audio response |
 | Save/load | Animation hookups |
 | Networking and HTTP | Widget layout and bindings |

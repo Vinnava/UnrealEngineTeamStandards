@@ -4,9 +4,10 @@ The rules every developer on this team follows, on every Unreal project.
 
 The standard is **project-agnostic**: nothing in it depends on a particular game, module or feature.
 Where a project has to pin something down - its module name, content root or short prefix - the
-standard uses a `<Project>` placeholder, and that project's README fills it in.
+standard uses a `<Project>` placeholder, and that project's `CLAUDE.md` fills it in - from
+[`tooling/project-template/`](tooling/project-template/).
 
-**Version 1.6** - see the [changelog](CHANGELOG.md). Written against **Unreal Engine 5.x**. Every
+**Version 1.7** - see the [changelog](CHANGELOG.md). Written against **Unreal Engine 5.x**. Every
 claim about engine behaviour was checked against **UE 5.7** source, and the defaults that matter
 were re-checked in **5.8**. Where a rule depends on the engine version, it says so.
 
@@ -25,11 +26,13 @@ were re-checked in **5.8**. Where a rule depends on the engine version, it says 
   [`.github/workflows/standard.yml`](.github/workflows/standard.yml) runs the two that can gate a
   commit on every push.
 
-**Section numbers are global and stable.** "(3.12)" means section 3.12 wherever it appears; this table
-says which file holds it.
+**Section numbers are global and stable.** A bare number in prose is always a **section**, never a
+file: "(3.12)" means section 3.12 wherever it appears, and this table says which file holds it - in
+that case `rules/02-cpp.md`, whose own name carries an unrelated `02`.
 
 | Sections | File | Read it |
 |---|---|---|
+| - | [rules/00-core.md](rules/00-core.md) | **Always, and first** - pillars, precedence, placeholders |
 | 1-2 | [rules/01-layout.md](rules/01-layout.md) | Before you add a file or an asset |
 | 3 | [rules/02-cpp.md](rules/02-cpp.md) | Before your first line of code |
 | 4 | [rules/03-cpp-naming.md](rules/03-cpp-naming.md) | Before your first line of code |
@@ -54,53 +57,25 @@ ordinary day, and the first item solves more mysteries than the other twenty-fou
 
 ---
 
-## Placeholders
+## Pillars, precedence and placeholders
 
-`<Project>` is the only placeholder. It stands for the project's short name - PascalCase in class,
-module and folder names, lowercased where the convention is lowercase (variables, console commands).
-Code examples use **`Game`** as a concrete stand-in: `LogGameQuest`, `GAME_API`, `gameGI`,
-`game.quest.launch`.
+These live in **[rules/00-core.md](rules/00-core.md)** - the ranked architecture pillars, the
+"which document wins" order, the `<Project>` placeholder convention, and what the `[team-size]`
+marker means.
 
-## Which document wins
-
-When rules disagree, the higher item wins:
-
-1. **The engine.** What Unreal actually does, verified in its source, beats every document - this
-   standard included. A rule here that fights the engine is a defect here.
-2. **A project's written override** - listed in that project's README with the section number and
-   the reason. It wins inside that project only.
-3. **This standard.**
-4. **A project's other documents** - its `CLAUDE.md`, rule files, wiki. They may add rules and
-   project detail; where they contradict this standard without a written override, this standard
-   wins and the project document is the defect.
-5. **Existing code and habit.** "The codebase already does it this way" is evidence of a past
-   decision, not permission.
-
-An unwritten deviation is a defect, not an override.
-
-## Architecture pillars
-
-Four pillars, **ranked**. Every rule serves one of them. When two rules pull against each other, or a
-request conflicts with a rule, **the higher-ranked pillar decides** - and the conflict is raised in a
-`CONFLICT` block (14.1) before any code is written.
-
-1. **Separation of concerns** - each class, component and system does one job (1.3, 9.8).
-2. **Loose coupling** - systems talk through delegates, interfaces and subsystems, never by reaching
-   into each other's classes (9.3, 9.7).
-3. **Data-driven design** - behaviour a designer tunes lives in DataAssets, tags and settings, not in
-   code (9.2, 9.6).
-4. **Event-driven first, Tick when right** - delegates, events and timers wherever they fit; Tick only
-   with approval (3.7, 3.12, 10.5).
-
-The pillars say *what* to optimise for. The pattern catalogue in 9.10 says *how*.
+They are in a rule file rather than here because an assistant is given `rules/`, not this README, and
+every `CONFLICT` block (14.1) depends on the pillars. Keeping them here would mean handing an
+assistant the rules without the thing that decides between them.
 
 ## Giving this to an AI assistant
 
-Import only the files a project needs:
+Import only the files a project needs. These are **file** names from the table above; a number in
+prose is always a section.
 
-These are **file** numbers from the table above, not section numbers.
-
-- **Every project:** `01-layout` to `06-architecture`, plus `11-practice` and `13-checklists`.
+- **Always, in every project, first:** `00-core`. Without it the assistant has the rules and nothing
+  to resolve them with - no pillars, no precedence order, no `<Project>` convention.
+- **Every project:** `00-core`, `01-layout` to `06-architecture`, plus `11-practice` and
+  `13-checklists`.
 - **Add as needed:** `07-async` for async work, **`08-networking` only if the project replicates**,
   `09-ui` for UI, `10-performance` for performance work, `12-engine-traps` as a reference before
   touching a named system, `14-audio` for audio, `15-accessibility` for player-facing text and UI,

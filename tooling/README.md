@@ -10,6 +10,24 @@ instead of by memory. Copy them into a project. If a project needs a change, cha
 | `.editorconfig` | Project root | Encoding, tabs and trailing whitespace, for editors that do not read `.clang-format`. |
 | `check-standard.py` | Stays here | Consistency of **this repository**, not of a project: section references, links, encoding, checklist citations, the file index and the version. |
 | `Validators/AssetNamingValidator.h` / `.cpp` | The project's editor module | Asset prefixes (7.1), core-framework role prefixes (7.2), and PascalCase names with no spaces (7.3) - on save, from Validate Data, and in CI. |
+| `project-template/CLAUDE.md` | Project root | The rule-file imports, the project's pinned decisions, and **the override table** (00-core). The file an assistant actually reads. |
+| `project-template/.gitattributes` | Project root, before the first asset | Git LFS with `lockable`, without which `git lfs lock` in 14.3 does not work. |
+| `project-template/PULL_REQUEST_TEMPLATE.md` | The project's `.github/` | The rules no tool can check (18.2), sized like 17.1 rather than 17.2. |
+
+## Starting a project
+
+Copy `project-template/` into the new project and fill in every `<Project>`:
+
+| From | To |
+|---|---|
+| `project-template/CLAUDE.md` | `CLAUDE.md` at the project root |
+| `project-template/.gitattributes` | `.gitattributes` at the project root, **before the first asset commit** |
+| `project-template/PULL_REQUEST_TEMPLATE.md` | `.github/PULL_REQUEST_TEMPLATE.md` |
+
+`CLAUDE.md` is the one that matters most. It holds the rule-file imports **and the override table**:
+the precedence order in `00-core` makes a written override beat the standard, and the assistant only
+ever sees the overrides that live in the file it is given. An override recorded solely in the project
+README is invisible to it, which makes it an unwritten deviation - a defect, not an override.
 
 ## Checking the standard itself
 

@@ -12,10 +12,28 @@ rule itself.
 ## The pillars and the precedence order
 
 The pillars are **ranked** so that a conflict between two good rules has an answer that does not
-depend on who is in the room. The precedence order at the top of the README exists for the same
-reason at the document level: when a project rule file and this standard disagree, the question
-"which one wins?" should never be settled by habit. An unwritten deviation is a defect because nobody
-reviewing the code can tell a decision from an accident.
+depend on who is in the room. The precedence order exists for the same reason at the document level:
+when a project rule file and this standard disagree, the question "which one wins?" should never be
+settled by habit. An unwritten deviation is a defect because nobody reviewing the code can tell a
+decision from an accident.
+
+**Why they live in [rules/00-core.md](rules/00-core.md) and not in the README.** Until 1.7 they were
+in the README, which is not in the import list - so an assistant was handed every rule and nothing to
+resolve them with. It could be told to raise a `CONFLICT` block and be unable to name the pillar the
+conflict was against. The pillars are the most load-bearing page in the standard; a file nobody loads
+is a file that does not exist.
+
+**Why the override table moved to `CLAUDE.md` too.** Same argument, one level down. Precedence rule 2
+says a written override beats this standard, and the assistant only ever sees what is in the file it
+is given. An override recorded solely in the project README is, from where the assistant sits, an
+unwritten deviation - which the same rule calls a defect.
+
+**Why a few rules are marked `[team-size]`.** The standard says nothing here is aspirational, and
+that claim only survives if the rules that genuinely need a studio say so. Four did not: 13.6's full
+instrumentation set, 13.9's regression gates, 14.5's nightly and weekly tiers, and 11.7's weekly
+server build. A solo developer who reads those, finds them impossible, and skips them has learned
+that parts of this document are optional - and cannot tell which other parts. Marking them keeps the
+unmarked rules unconditional, which is the property worth protecting.
 
 ---
 
@@ -229,6 +247,14 @@ before anyone presses Play; the runtime pass catches data that only goes wrong i
 ---
 
 ## 7. Blueprint and content naming
+
+**7.1 `PHYS_` against Epic's `PA_`.** This is the second knowing deviation in the standard, and it is
+a weaker case than camelCase members (4.1). Epic ships `PA_Mannequin`; `SKM_` and `SK_` here follow
+UE5 exactly, so "everything else follows Epic" was not quite true while `PHYS_` sat unexplained. It
+stays because the prefix is read far more often than it is typed and `PHYS` is the word people say,
+but it is written down as a deviation now rather than passing as a convention - an unexplained
+difference from Epic is indistinguishable from a mistake, and the next person to notice would be
+right to.
 
 **7.1** A prefix that is sometimes one thing and sometimes another cannot be searched for. Where the
 community uses two, we pick the one that matches our C++ convention. `HDRI_` is the one place we

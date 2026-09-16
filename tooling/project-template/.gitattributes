@@ -1,0 +1,32 @@
+# Project .gitattributes - standard 14.3 and 18.1. Copy to the project root BEFORE the first asset
+# is committed. Retrofitting LFS means rewriting history.
+#
+# `lockable` is the half people forget: `git lfs lock` only works on a path marked lockable, and
+# without it 14.3's "lock a .uasset before you edit it" is unenforceable. Files marked lockable are
+# checked out read-only, so the editor itself tells you to take the lock.
+
+* text=auto
+
+# Unreal binary assets - LFS, and lockable because two artists cannot merge one .uasset.
+*.uasset  filter=lfs diff=lfs merge=lfs -text lockable
+*.umap    filter=lfs diff=lfs merge=lfs -text lockable
+
+# Source art and audio.
+*.psd  filter=lfs diff=lfs merge=lfs -text lockable
+*.fbx  filter=lfs diff=lfs merge=lfs -text lockable
+*.wav  filter=lfs diff=lfs merge=lfs -text
+*.mp3  filter=lfs diff=lfs merge=lfs -text
+*.ogg  filter=lfs diff=lfs merge=lfs -text
+*.png  filter=lfs diff=lfs merge=lfs -text
+*.tga  filter=lfs diff=lfs merge=lfs -text
+*.exr  filter=lfs diff=lfs merge=lfs -text
+*.hdr  filter=lfs diff=lfs merge=lfs -text
+*.mp4  filter=lfs diff=lfs merge=lfs -text
+
+# Text that must stay text, whatever the wildcard above decides.
+*.cpp  text eol=crlf
+*.h    text eol=crlf
+*.cs   text eol=crlf
+*.ini  text eol=crlf
+*.md   text eol=lf
+*.py   text eol=lf

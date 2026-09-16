@@ -16,6 +16,15 @@ tab_width = 4
 indent_style = tab
 indent_size = 4
 
+# Unreal config. The editor rewrites these files constantly and does not indent sections, so the rule
+# here is only "do not let an editor reformat them" - no trailing-whitespace trimming, which would
+# churn every ini the editor touches.
+[*.ini]
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = false
+insert_final_newline = false
+
 [*.md]
 indent_style = space
 indent_size = 2

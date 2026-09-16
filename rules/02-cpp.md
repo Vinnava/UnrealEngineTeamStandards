@@ -126,10 +126,10 @@ Guard clauses first, log the failure, return early. Happy path unindented at the
 ```cpp
 void UQuestRunner::AdvanceToNextStep()
 {
-    if (!currentStep)
+    if (!IsValid(currentStep))
     {
         UE_LOGFMT(LogGameQuestRunner, Error,
-            "[{Obj}] [AdvanceToNextStep] currentStep is null",
+            "[{Obj}] [AdvanceToNextStep] currentStep is null or pending kill",
             GetNameSafe(this));
         return;
     }
@@ -148,10 +148,17 @@ wrapper and no `*` dereference (section 6).
   first. When Tick genuinely is the right tool - continuous per-frame work with no natural event -
   flag it in the plan and get it approved **before** writing it. An approved Tick carries a one-line
   comment saying why, and self-disables the moment it has nothing to do. How to tick: 3.12.
-- **Every debug draw sits inside `#if ENABLE_DRAW_DEBUG`** - off in Shipping and Test builds
-  (`EngineDefines.h`) - **and behind a runtime bool** under `Initialize|Debug` (3.3).
-- **Countdowns run on a timer, not in Tick.** One `FTimerHandle` for the duration, `GetTimerRemaining`
-  for display, cleared in teardown (10.5).
+- **Every debug draw sits inside `#if ENABLE_DRAW_DEBUG`** - **and behind a runtime bool** under
+  `Initialize|Debug` (3.3). The macro is `UE_ENABLE_DEBUG_DRAWING` in `EngineDefines.h`, aliased as
+  `ENABLE_DRAW_DEBUG` in `DrawDebugHelpers.h`, and it is
+  `(!(UE_BUILD_SHIPPING || UE_BUILD_TEST) || WITH_EDITOR)` - so it is off in Shipping and Test
+  **except in an editor build**, where it stays on. Never let an editor build be your evidence that a
+  debug draw is compiled out.
+- **Countdowns run on a timer, not in Tick.** One `FTimerHandle` for the duration, cleared in
+  teardown (10.5). **The display is a second, slower timer that pushes the value** - 0.1 s for a
+  ticking readout, 1 s for whole seconds - reading `GetTimerRemaining` on the duration handle and
+  calling the widget's setter. Never a UMG property binding and never `NativeTick` (12.6): the
+  display timer is the push that rule asks for.
 - **No magic numbers.** Named `static const` or `constexpr`, declared next to what they govern.
 - **No switch statements on identity** (9.2).
 - **Prefer composition over deep inheritance chains.**
@@ -194,8 +201,9 @@ wrapper and no `*` dereference (section 6).
 Shipping builds default `DO_CHECK` and `DO_ENSURE` to off (`Build.h`, `AssertionMacros.h`).
 
 - **Never put logic inside `check`.** It is not evaluated in Shipping.
-- **`ensureMsgf` is the default assertion.** Prefer a guarded `ensure` to `check` for anything a
-  player can survive: `if (!ensure(IsValid(runner))) { return; }`.
+- **`ensureMsgf` is the default assertion** - the message is what makes the report useful a week
+  later. Prefer a guarded `ensureMsgf` to `check` for anything a player can survive:
+  `if (!ensureMsgf(IsValid(runner), TEXT("quest runner missing on advance"))) { return; }`.
 - **Keep `check` for true invariants** - `check(IsInGameThread())` (10.1).
 - **Expected failures are not assertions.** Bad authored data and network input are logged (6.6,
   6.7), never `ensure`d.

@@ -154,6 +154,14 @@ EDataValidationResult UAssetNamingValidator::ValidateLoadedAsset_Implementation(
 	FindRequiredPrefixes(assetData, asset, requiredPrefixes);
 	if (requiredPrefixes.IsEmpty())
 	{
+		// A type with no row is not a pass - it is a gap in the table. Warn rather than fail, so a new
+		// engine type does not block a commit, but the table grows instead of quietly ageing (7.1).
+		const FText message = FText::Format(
+			LOCTEXT("UnmappedType", "'{0}' is a '{1}', which has no prefix rule yet - add a row to "
+									"AssetNamingValidator, or a line to standard 7.1 saying it has none."),
+			FText::AsCultureInvariant(assetName),
+			FText::AsCultureInvariant(assetData.AssetClassPath.GetAssetName().ToString()));
+		AssetWarning(asset, message);
 		return EDataValidationResult::NotValidated;
 	}
 

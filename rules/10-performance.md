@@ -111,6 +111,8 @@ Report **hitches per minute** alongside p99. Nearly every hitch is one of five:
 
 ### 13.6 Instrumentation
 
+**`[team-size]` for all four; the CPU scope alone is unconditional.** On a small project the scope is what pays for itself immediately - counters, CSV stats and LLM tags earn their keep once someone other than the author is reading the capture (18.2).
+
 A subsystem is not done until it has all four:
 
 1. **A CPU scope on its update** - `TRACE_CPUPROFILER_EVENT_SCOPE(Quest_Tick)`, named `System_Verb`.
@@ -152,6 +154,8 @@ A subsystem is not done until it has all four:
   number.
 
 ### 13.9 Regression gates
+
+**`[team-size]`.** This whole section needs dedicated hardware and someone to own a red build; it is Tier 3 (18.3). Without it, keep the before-and-after captures of 13.2 - the habit is what the gate automates.
 
 - **A deterministic perf test runs in CI** - fixed level, route, seed, build configuration and device,
   on dedicated hardware (Gauntlet drives it) - captures CSV, and **fails the build** when a budget
