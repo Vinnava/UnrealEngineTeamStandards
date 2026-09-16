@@ -7,7 +7,7 @@
 class UBlueprint;
 
 /**
- * Fails assets under the project content root that break the naming rules in standard 7.1 and 7.3.
+ * Fails assets under the project content root that break the naming rules in standard 7.1 to 7.3.
  * Runs on save, from Tools > Validate Data, and in CI. Lives in an editor module that depends on DataValidation.
  */
 UCLASS(Config = Editor)
@@ -21,20 +21,20 @@ private:   // Variables
 	FString contentRoot;
 
 private:   // Functions
-	/** Prefix the asset's type requires under 7.1; empty when the type has no rule */
-	FString FindRequiredPrefix(const FAssetData& assetData, const UObject* asset) const;
+	/** Prefixes the asset's type accepts under 7.1; empty when the type has no rule */
+	void FindRequiredPrefixes(const FAssetData& assetData, const UObject* asset, TArray<FString>& outPrefixes) const;
 
-	/** Prefix for a Blueprint asset, resolved from its Blueprint type and parent class */
+	/** Prefix for a Blueprint asset, from its Blueprint type and parent class - includes the 7.2 role infixes */
 	FString FindBlueprintPrefix(const UBlueprint& blueprint) const;
 
 protected: // Functions
 	/** Only assets inside contentRoot are checked, so third-party folders are left alone (2.2) */
-	virtual bool CanValidateAsset_Implementation(const FAssetData& assetData, UObject* object,
-		FDataValidationContext& context) const override;
+	virtual bool CanValidateAsset_Implementation(
+		const FAssetData& assetData, UObject* object, FDataValidationContext& context) const override;
 
 	/** Fails the asset on a space, a missing or wrong prefix, or a non-PascalCase name after it */
-	virtual EDataValidationResult ValidateLoadedAsset_Implementation(const FAssetData& assetData,
-		UObject* asset, FDataValidationContext& context) override;
+	virtual EDataValidationResult ValidateLoadedAsset_Implementation(
+		const FAssetData& assetData, UObject* asset, FDataValidationContext& context) override;
 
 public:    // Functions
 	/** Sets the default content root; each project overrides it in DefaultEditor.ini */

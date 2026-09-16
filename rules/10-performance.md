@@ -14,6 +14,8 @@ is in [why.md](../why.md).
 | **PC** | No artificial constraints, **but never break the lowest target platform's build.** |
 
 - **The most constrained platform is the binding one.**
+- **Each platform's certification requirements are a list with an owner** (20.9) - several of them
+  are accessibility items, and they fail a submission as hard as a crash.
 - **Desktop and mobile:** every interactive UI system has two paths (9.1); the mobile one is under
   pressure. **Desktop-only:** do not build the second path.
 

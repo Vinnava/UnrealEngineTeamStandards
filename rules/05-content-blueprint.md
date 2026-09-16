@@ -40,7 +40,7 @@ is in [why.md](../why.md).
 | `SC_` | Sound Cue | `SC_FootstepStone` |
 | `SW_` | Sound Wave | `SW_Ambience_Forest` |
 | `LS_` | Level Sequence | `LS_OpeningCinematic` |
-| `HDRI_` | HDRI backdrop | `HDRI_Overcast` |
+| `HDRI_` | HDRI backdrop texture - in place of `T_` | `HDRI_Overcast` |
 | `E_` | Blueprint Enum | `E_ContactTab` |
 | `F_` | Blueprint Struct | `F_LoadoutData` |
 | `BB_` | Blackboard | `BB_Guard` |
@@ -65,7 +65,8 @@ is in [why.md](../why.md).
 | `GA_` | Gameplay Ability (GAS) | `GA_Dash` |
 
 **One prefix per type, never a choice of two.** Blueprint structs are `F_`, matching the C++ `F`
-prefix - not `S_`.
+prefix - not `S_`. **The single exception is `HDRI_`**, which a texture authored as an HDRI backdrop
+takes instead of `T_`; the validator accepts either for any texture type.
 
 ### 7.2 Blueprint role infixes
 
@@ -121,6 +122,9 @@ Everything else is simply `BP_<Thing>`: `BP_PortalTrigger`, `BP_Wardrobe`, `BP_A
   everywhere: camelCase role, PascalCase type.
 - Common widget type suffixes: `_Btn`, `_Text`, `_Img`, `_ScrollBox`, `_Switcher`, `_SizeBox`,
   `_Panel`, `_Bar`, `_Box`, `_Slot`.
+- **Event Dispatchers are PascalCase `On*`, exactly as in C++** (4.7). A dispatcher and a
+  `BlueprintAssignable` delegate member are the same thing on two sides of the boundary, and they
+  carry the same name - `OnPanelChanged` whether you meet it in a header or on a node.
 
 ### 7.5 Folder naming
 

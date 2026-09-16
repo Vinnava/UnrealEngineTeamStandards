@@ -203,8 +203,13 @@ Shipping builds default `DO_CHECK` and `DO_ENSURE` to off (`Build.h`, `Assertion
 ### 3.10 Formatting
 
 - **Opening braces go on their own line** - functions, classes, structs and control flow alike.
+  **The one exception is a braced initialiser list**, which stays on the assignment line -
+  `static const TCHAR* const Table[][2] = {` - because clang-format has no option to break there, and
+  a rule the formatter reverses on the next save is not a rule.
 - Indentation, spacing and line length come from the repository's `.clang-format`
   (`tooling/.clang-format`: tabs, 120 columns). Run it on the lines you changed.
+- **Tabs indent; spaces only ever align.** If a diff shows a line whose indentation starts with a
+  space, the formatter was not the thing that wrote it.
 
 ### 3.11 Where code goes in the actor lifecycle
 

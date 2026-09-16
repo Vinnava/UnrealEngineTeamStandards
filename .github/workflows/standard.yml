@@ -1,0 +1,37 @@
+# The every-commit tier (14.5) for this repository. Both jobs fail the build; neither is advisory.
+name: standard
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  consistency:
+    name: Section references, links, encoding, index, version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: check-standard.py
+        run: python tooling/check-standard.py
+
+  formatting:
+    name: Shipped C++ matches tooling/.clang-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # Pinned: a different clang-format version formats differently, and an unpinned one turns this
+      # gate into a source of diffs nobody asked for. Bump it deliberately, with the reformat.
+      - name: Install clang-format 19
+        run: pip install clang-format==19.1.5
+      - name: Check formatting
+        run: |
+          clang-format --style=file:tooling/.clang-format \
+            --dry-run --Werror tooling/Validators/AssetNamingValidator.h \
+                               tooling/Validators/AssetNamingValidator.cpp

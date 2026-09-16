@@ -6,7 +6,7 @@ The standard is **project-agnostic**: nothing in it depends on a particular game
 Where a project has to pin something down - its module name, content root or short prefix - the
 standard uses a `<Project>` placeholder, and that project's README fills it in.
 
-**Version 1.3** - see the [changelog](CHANGELOG.md). Written against **Unreal Engine 5.x**. Every
+**Version 1.6** - see the [changelog](CHANGELOG.md). Written against **Unreal Engine 5.x**. Every
 claim about engine behaviour was checked against **UE 5.7** source, and the defaults that matter
 were re-checked in **5.8**. Where a rule depends on the engine version, it says so.
 
@@ -20,7 +20,10 @@ were re-checked in **5.8**. Where a rule depends on the engine version, it says 
   incidents behind them. It is for people. Read it when a rule looks arbitrary, and before you change
   one.
 - **[`tooling/`](tooling/README.md)** - files that enforce the mechanical rules: `.clang-format`,
-  `.editorconfig` and an asset-naming validator.
+  `.clang-tidy`, `.editorconfig`, an asset-naming validator, and a consistency checker for this
+  repository. Every one of them has been run against this repository, and
+  [`.github/workflows/standard.yml`](.github/workflows/standard.yml) runs the two that can gate a
+  commit on every push.
 
 **Section numbers are global and stable.** "(3.12)" means section 3.12 wherever it appears; this table
 says which file holds it.
@@ -40,6 +43,14 @@ says which file holds it.
 | 14-15 | [rules/11-practice.md](rules/11-practice.md) | Once; and when something is wrong |
 | 16 | [rules/12-engine-traps.md](rules/12-engine-traps.md) | Before you touch a named system |
 | 17-18 | [rules/13-checklists.md](rules/13-checklists.md) | Every commit; when starting a project |
+| 19 | [rules/14-audio.md](rules/14-audio.md) | Before you play a sound |
+| 20 | [rules/15-accessibility.md](rules/15-accessibility.md) | Before the first screen; before any player-facing text |
+| 21 | [rules/16-online.md](rules/16-online.md) | Only if the project talks to a backend |
+| 22 | [rules/17-upgrades.md](rules/17-upgrades.md) | Before an engine upgrade |
+
+**Lost, or something is behaving impossibly?** Go straight to the debugging playbook in
+[rules/11-practice.md](rules/11-practice.md) (section 15). It is the highest-value page here on an
+ordinary day, and the first item solves more mysteries than the other twenty-four combined.
 
 ---
 
@@ -87,12 +98,53 @@ The pillars say *what* to optimise for. The pattern catalogue in 9.10 says *how*
 
 Import only the files a project needs:
 
-- **Every project:** 01 to 06, 11 and 13.
-- **Add as needed:** 07 for async work, **08 only if the project replicates**, 09 for UI, 10 for
-  performance work, 12 as a reference before touching a named system.
+These are **file** numbers from the table above, not section numbers.
+
+- **Every project:** `01-layout` to `06-architecture`, plus `11-practice` and `13-checklists`.
+- **Add as needed:** `07-async` for async work, **`08-networking` only if the project replicates**,
+  `09-ui` for UI, `10-performance` for performance work, `12-engine-traps` as a reference before
+  touching a named system, `14-audio` for audio, `15-accessibility` for player-facing text and UI,
+  **`16-online` only if the project talks to a backend**, `17-upgrades` at upgrade time.
 
 Reference them from the project's `CLAUDE.md` or equivalent. Leave `why.md` out of assistant context
 unless you are changing a rule.
+
+## Adopting it
+
+**In tiers** (18). Doing all of it on day one is not the goal, and a standard that cannot be
+partially adopted gets wholly ignored.
+
+| Tier | When | What it buys |
+|---|---|---|
+| **1** (18.1) | Before the first feature | The decisions that are expensive or impossible to reverse: module split, content root, short name, replication, LFS before the first asset |
+| **2** (18.2) | Before the first milestone | Production discipline: tooling, CI, budgets, validators, accessibility and audio decisions |
+| **3** (18.3) | When review alone stops working | Blueprint lint, reference budgets, perf regression gates, upgrade cadence |
+
+A two-person prototype does Tier 1 and stops - it is not failing the standard by doing so. Adopting
+it onto an existing codebase is 18.4: new code meets it in full from day one, nothing is renamed on
+sight, and every deliberate deviation is written down as an override.
+
+## Changing this standard
+
+This document is maintained the way the code is. A rule you cannot follow is a defect here, not a
+reason to work around it quietly.
+
+- **It has an owner.** The project README names who maintains this standard for that team, and who
+  decides when two readings conflict. Without a name, "someone should fix that" is where a defect
+  goes to stay.
+- **Proposing a change** uses the `CONFLICT` block (14.1): the rule, what it forces today, what the
+  change needs, the options, and a recommendation. A change to a rule lands with its `why.md` entry
+  in the same commit - a rule with no recorded reasoning is one the next person will delete.
+- **Engine claims are re-verified on every upgrade** (22.2), and the version in the header above is
+  updated with them. A claim that can no longer be verified is marked unverified rather than left
+  implying it was checked.
+- **Deprecating a rule** is an entry in the changelog saying what replaced it and why, not a silent
+  deletion. Rules removed because the engine fixed the underlying problem say which version fixed it.
+- **A project's trap becomes a general one** when a second project hits it: it moves from that
+  project's section 16 into [rules/12-engine-traps.md](rules/12-engine-traps.md), with the incident
+  in `why.md`.
+- **Every change is versioned** in [CHANGELOG.md](CHANGELOG.md), and anything that changes a rule's
+  *meaning* says so in those words, so a reader can tell a clarification from a reversal.
 
 ---
 

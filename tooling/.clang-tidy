@@ -1,0 +1,105 @@
+# Team clang-tidy - standard section 18. Copy to the project root, beside .clang-format.
+# Enforces the case rules in 4.1 as far as readability-identifier-naming can express them.
+#
+# What this file deliberately does NOT check, because the check cannot express it:
+#   - Type prefixes A / U / F / I / E / S / T (4.1). One ClassPrefix option cannot vary by base class;
+#     an Unreal-aware validator or review catches these.
+#   - The b prefix on booleans (4.2). Naming rules cannot select on type.
+#   - The verb vocabulary (4.3) and the approved short names (4.8).
+#   - That a PascalCase On* member is really a delegate (4.7), or that back_Btn is really a
+#     BindWidget (7.4). Both are let through by name below, so a mis-cased member that happens to
+#     match either shape escapes.
+# Only readability-identifier-naming is enabled: every other check fights engine idioms or the
+# generated code behind UPROPERTY / UFUNCTION, and a noisy tool is a tool nobody runs (18).
+#
+# Never run this with --fix. A rename here would break reflection, Core Redirects and BindWidget
+# (3.8, 7.4). Report only; a human does the rename with its redirect.
+# Needs clang-tidy 15+ for IgnoredRegexp and 19+ for ExcludeHeaderFilterRegex - on an older one,
+# delete the lines it rejects rather than dropping the file.
+
+Checks: >
+  -*,
+  readability-identifier-naming
+
+# Project headers only. Engine and Intermediate headers must never be diagnosed - the generated
+# .generated.h and .gen.cpp files break every naming rule by design.
+HeaderFilterRegex: '^.*[/\\]Source[/\\].*\.(h|hpp|inl)$'
+ExcludeHeaderFilterRegex: '.*\.generated\.h$'
+SystemHeaders: false
+
+CheckOptions:
+  # Members, locals and parameters are camelCase - the one deliberate deviation from Epic (4.1)
+  - key:   readability-identifier-naming.PrivateMemberCase
+    value: camelBack
+  - key:   readability-identifier-naming.ProtectedMemberCase
+    value: camelBack
+  - key:   readability-identifier-naming.PublicMemberCase
+    value: camelBack
+  - key:   readability-identifier-naming.ClassMemberCase
+    value: camelBack
+  - key:   readability-identifier-naming.LocalVariableCase
+    value: camelBack
+  - key:   readability-identifier-naming.ParameterCase
+    value: camelBack
+
+  # Two member names are PascalCase or carry an underscore by rule, not by accident:
+  # a delegate member is the event it carries (4.7), and a BindWidget member is named for the
+  # widget it binds to (7.4). Everything else must be camelBack.
+  - key:   readability-identifier-naming.PrivateMemberIgnoredRegexp
+    value: '^(On[A-Z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*)$'
+  - key:   readability-identifier-naming.ProtectedMemberIgnoredRegexp
+    value: '^(On[A-Z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*)$'
+  - key:   readability-identifier-naming.PublicMemberIgnoredRegexp
+    value: '^(On[A-Z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*)$'
+
+  # Functions and methods are PascalCase (4.1, 4.3)
+  - key:   readability-identifier-naming.FunctionCase
+    value: CamelCase
+  - key:   readability-identifier-naming.MethodCase
+    value: CamelCase
+
+  # Engine-required forms: OnRep_ handlers, and the _Implementation / _Validate halves (11.6)
+  - key:   readability-identifier-naming.MethodIgnoredRegexp
+    value: '^(OnRep_[A-Z][A-Za-z0-9]*|[A-Z][A-Za-z0-9]*_(Implementation|Validate))$'
+
+  # Constants are PascalCase, declared next to what they govern (3.7, 4.1). ConstexprVariableCase
+  # covers every constexpr, a local one included - 4.1 says a constexpr name is PascalCase wherever it
+  # is declared, which is what separates it from a plain const local.
+  - key:   readability-identifier-naming.ConstantCase
+    value: CamelCase
+  - key:   readability-identifier-naming.ConstexprVariableCase
+    value: CamelCase
+  - key:   readability-identifier-naming.ClassConstantCase
+    value: CamelCase
+  - key:   readability-identifier-naming.StaticConstantCase
+    value: CamelCase
+  - key:   readability-identifier-naming.GlobalConstantCase
+    value: CamelCase
+
+  # A const local, parameter or member is still a local, parameter or member (4.1). Without these,
+  # each falls back to the ConstantCase rule above and the tool demands PascalCase for a const member -
+  # the opposite of 4.1. ConstantMemberCase covers a non-static const member; ClassConstantCase above
+  # covers the static const one, which really is a constant and really is PascalCase.
+  - key:   readability-identifier-naming.LocalConstantCase
+    value: camelBack
+  - key:   readability-identifier-naming.ConstantMemberCase
+    value: camelBack
+  - key:   readability-identifier-naming.ConstantParameterCase
+    value: camelBack
+  - key:   readability-identifier-naming.ConstantPointerParameterCase
+    value: camelBack
+
+  # Enumerators are PascalCase with no prefix (4.5)
+  - key:   readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key:   readability-identifier-naming.ScopedEnumConstantCase
+    value: CamelCase
+
+  - key:   readability-identifier-naming.NamespaceCase
+    value: CamelCase
+  - key:   readability-identifier-naming.TemplateParameterCase
+    value: CamelCase
+  - key:   readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key:   readability-identifier-naming.TypedefCase
+    value: CamelCase

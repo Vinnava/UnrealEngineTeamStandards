@@ -4,7 +4,10 @@ BasedOnStyle: LLVM
 Language: Cpp
 Standard: Latest
 
-UseTab: ForIndentation
+# ForContinuationAndIndentation, not ForIndentation: a wrapped line is indented with a tab like any
+# other. With ForIndentation, clang-format indents continuations with spaces and the file ends up
+# mixing both, against 3.10 and .editorconfig.
+UseTab: ForContinuationAndIndentation
 IndentWidth: 4
 TabWidth: 4
 ContinuationIndentWidth: 4
@@ -15,6 +18,20 @@ AccessModifierOffset: -4
 IndentCaseLabels: true
 NamespaceIndentation: All
 FixNamespaceComments: true
+
+# LLVM aligns a wrapped argument under the open parenthesis, which it can only do with spaces - the
+# same tab/space mix again, and it wastes most of the 120 columns on deep calls. One tab instead.
+AlignAfterOpenBracket: DontAlign
+
+# LLVM's C++11 braced-list style strips the inner spaces: { TEXT("World"), TEXT("L_") } becomes
+# {TEXT("World"), TEXT("L_")}, and indents the rows with spaces. Off, for Epic's spacing.
+Cpp11BracedListStyle: false
+
+# Leave trailing comments where they were written, so the aligned access-specifier block in 3.1
+# (private:   // Variables) survives the formatter.
+AlignTrailingComments:
+  Kind: Leave
+  OverEmptyLines: 0
 
 PointerAlignment: Left
 DerivePointerAlignment: false

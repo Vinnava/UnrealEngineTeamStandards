@@ -12,7 +12,7 @@ is in [why.md](../why.md).
 | Module | Contains |
 |---|---|
 | `<Project>` | Main game module - gameplay, characters, UI, subsystems |
-| `<Project>Online` | HTTP, JSON, auth, backend service classes, wire types |
+| `<Project>Online` | HTTP, JSON, auth, backend service classes, wire types - rules in section 21 |
 | `<Project>Editor` | Editor-only tooling, if any |
 
 - Keep `HTTP` / `Json` dependencies out of the game module.

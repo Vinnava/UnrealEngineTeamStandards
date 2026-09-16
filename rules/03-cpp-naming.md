@@ -22,12 +22,20 @@ is in [why.md](../why.md).
 | **Enum class** | `E` prefix | `ECallOutcome`, `EWidgetState`, `EInputLockMode` |
 | **Enumerator values** | `PascalCase`, **no prefix** | `Answered`, `Declined`, `Missed`, `Passive`, `Ring` |
 | **Delegate type** | `F` + `On` + PascalCase | `FOnTransitionReady`, `FOnStandUpComplete` |
+| **Delegate member** | `On` + PascalCase - **not** camelCase (4.7) | `OnTransitionReady`, `OnInventoryUpdated` |
 | **Template / smart pointer** | `T` prefix | `TObjectPtr`, `TSoftObjectPtr`, `TSubclassOf` |
 | **Slate widget** | `S` prefix | `SCustomTextBox` |
 | **Log category** | `Log` + project + domain | `LogGameQuestRunner`, `LogGameInventory` |
 
 > **One deliberate deviation from Epic: Epic uses PascalCase for member variables; we use
 > camelCase.** Follow ours, not the engine's. Everything else follows Epic.
+
+**A delegate member is the one member variable that stays PascalCase** (4.7). The `BindWidget` member
+is the one that carries an underscore (7.4). There are no other exceptions to the camelCase rule.
+
+**A `constexpr` name is PascalCase wherever it is declared** - file scope, class scope or inside a
+function. That is what separates it from a plain `const` local, which is an ordinary local and stays
+camelCase: `constexpr float MaxDwellSeconds = 2.f;` beside `const float elapsed = GetElapsed();`.
 
 ### 4.2 Booleans
 
@@ -209,11 +217,25 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAssemblyReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLoadoutSaved, const FLoadoutData&, SavedLoadout);
 ```
 
+```cpp
+// The members that hold them - the type name without its F prefix
+/** Broadcast once the stand-up montage ends, from the montage end delegate only */
+FOnStandUpComplete OnStandUpComplete;
+
+/** Broadcast after the loadout is written to disk - Blueprint binds to this */
+UPROPERTY(BlueprintAssignable, Category = "Runtime|Loadout")
+FOnLoadoutSaved OnLoadoutSaved;
+```
+
 - Type name is **`F` + `On` + PascalCase describing the event**, not the handler.
 - **Dynamic delegate parameter names are PascalCase** - they become Blueprint pin labels. The one
   place a parameter is not camelCase.
-- **The member that holds the delegate is camelCase** (4.1): `onTransitionReady`. PascalCase `On*`
-  (4.3) names functions and virtual hooks, not members.
+- **The member that holds the delegate is PascalCase `On*`** - `OnTransitionReady`, not
+  `onTransitionReady`. This is a deliberate exception to the camelCase member rule (4.1): a delegate
+  member is the event, and it is named like one. A `BlueprintAssignable` member is also a Blueprint
+  pin label, so C++ and the Blueprint Event Dispatcher (7.4) read identically.
+- **`On*` is the event; `Handle*` is the callback bound to it** (4.3). A PascalCase `On*` name on a
+  *function* still means a virtual hook or a Blueprint-facing event, never a handler.
 - **More than two parameters? Pass one context struct** - `FOnHitReceived` carrying a
   `const FHitContext&`. New fields go into the struct; no listener or signature changes. For a dynamic
   delegate the struct is a `USTRUCT(BlueprintType)`.

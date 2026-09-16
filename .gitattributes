@@ -1,0 +1,18 @@
+# Line endings for this repository. Everything here is text, so normalise it: without this, a
+# clone on Windows checks out CRLF, and every file reports as modified with an empty diff.
+# This is not the project .gitattributes that 14.3 asks for - that one is about Git LFS and
+# binary asset locking, and belongs in a game project, not in a document repository.
+
+* text=auto eol=lf
+
+*.md      text eol=lf
+*.py      text eol=lf
+*.yml     text eol=lf
+*.h       text eol=lf
+*.cpp     text eol=lf
+*.ini     text eol=lf
+
+.gitattributes  text eol=lf
+.clang-format   text eol=lf
+.clang-tidy     text eol=lf
+.editorconfig   text eol=lf

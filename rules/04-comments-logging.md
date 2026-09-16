@@ -20,10 +20,17 @@ is in [why.md](../why.md).
 
 ### 5.2 The two-line rule
 
-> **Two lines maximum. No exceptions.** Applies to every comment you *write*.
+> **Two lines is the budget. Going over has to be earned, in the comment itself.**
 
-- No paragraph comments. No multi-line rationale blocks.
-- **Reasoning that needs more than two lines belongs in a design doc**, not above the code.
+- **Two lines covers almost everything worth saying** - a unit, a lifetime, what null means, a caller
+  contract. Write to the budget first; most comments that run long are restating the code.
+- **A comment may run longer only when the code cannot be followed without it** - a non-obvious
+  algorithm, a threading or ordering invariant, a workaround for engine behaviour. It then has to
+  *show* why: the first line names the thing that is not obvious, so a reader can tell a justified
+  comment from an unpruned one.
+- **Length is never for history, for an argument, or for a decision.** Reasoning about *why the
+  design is this way* belongs in a design doc; reasoning about *why this code is this way* is the
+  only thing that earns the space.
 - Plainly worded. State the point, not the full argument.
 - Applies to `//` inline, `/** Doxygen */` and file-scope comments alike.
 - **Per-parameter comments may sit on their own line, one line each** - never wrap a single parameter
@@ -69,7 +76,8 @@ EnsureGameplayHUD();
 ### 5.4 Comment maintenance (new and modified code)
 
 - **Code you add or change meets this standard in full.** A declaration you touch with no comment
-  gets one; a comment of three lines or more is rewritten down to two, preserving its meaning.
+  gets one; a comment of three lines or more is either cut to two or made to justify its length
+  (5.2), preserving its meaning either way.
 - **Do not repair the rest of the file as a drive-by.** Untouched code is brought up to standard in a
   planned cleanup pass, in its own commit - the same rule as logging (6.5).
 

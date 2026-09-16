@@ -20,3 +20,13 @@ indent_size = 4
 indent_style = space
 indent_size = 2
 trim_trailing_whitespace = false
+
+# Tooling written in this repository, not copied into a project: PEP 8 for Python, and YAML, which
+# cannot be indented with tabs at all.
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2

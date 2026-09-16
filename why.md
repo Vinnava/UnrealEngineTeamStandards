@@ -107,9 +107,25 @@ frame and produce a spike.
 
 ## 4. C++ naming conventions
 
-**4.1 The core table.** camelCase members are a deliberate deviation from Epic, held consistently
-across every project on this team - consistency within our code is worth more than matching the
-engine's.
+**4.1 The core table.** camelCase members are a deliberate deviation from Epic, and the most
+expensive rule in this document. It deserves a real defence rather than one sentence.
+
+*For it:* with PascalCase members, `Health` and `GetHealth()` differ only by parentheses, and in a
+codebase where a member and an accessor for it usually both exist, the case tells you which you are
+reading without going to the declaration. It also means one rule for every variable - member, local,
+parameter - instead of a member exception, which is one fewer decision on every line. The team has
+held it across several projects; the value is in never having to ask.
+
+*Against it, honestly:* every engine header, every Epic sample, every marketplace plugin, every
+Stack Overflow answer and every code model's default is PascalCase. Engine code pasted in has to be
+renamed. An experienced Unreal hire types the wrong thing for a fortnight. This is a real, permanent,
+daily tax, and elsewhere this document says "everything else follows Epic" - so this is the one place
+it pays to know why it is different.
+
+*If a project disagrees,* the precedence order allows it: write the override in that project's
+README with this section number and the reason, and apply it wholesale. What is not allowed is
+half a codebase each way - the cost of the deviation is paid once for consistency, and a split
+codebase pays it without buying anything.
 
 **4.2 Booleans.** A double negative in an `if` is a bug waiting to happen.
 
@@ -132,6 +148,15 @@ constructor body satisfies that wherever it lives.
 **4.7 Delegates.** Dynamic delegate parameter names become Blueprint pin labels - a designer reads
 them. A context struct means a new field never breaks an existing listener. Choosing the wrong
 delegate kind is the most common new-developer bug in Unreal.
+
+**A delegate member is PascalCase, against the camelCase member rule** (4.1). Until 1.4 the standard
+said camelCase here and PascalCase for the Blueprint Event Dispatcher (7.4), which is the same object
+seen from the other side - so the two rules disagreed about one name. The tie is broken in favour of
+PascalCase because a delegate member is not really a variable: it is the event, the thing listeners
+bind to, and it is the name the engine prints on a Blueprint node for a designer to read. The
+`b`-prefix, the dynamic parameter names and the `BindWidget` member all already bend the case rules
+where the name has a second audience; this is the same bend. The cost is one more exception to 4.1,
+which is why 4.1 now lists all of them in one place.
 
 **4.8 Short names.** Readable beats short.
 
@@ -156,9 +181,14 @@ nothing else records.
 
 **5.1** A comment that repeats a trivial accessor's name is exactly the self-evident comment 5.3 bans.
 
-**5.2** Reasoning that needs more than two lines belongs in a design doc, where it can be read in
-full. The class-level block is allowed to be longer because it documents a contract rather than a
-line of code.
+**5.2** The budget exists because the failure mode is real: comments that restate the code, age out
+of date, and teach readers to skip all comments including the load-bearing ones. Until 1.5 this was
+an absolute - "two lines maximum, no exceptions" - and it was wrong in one direction. A concurrency
+invariant or a genuinely subtle algorithm sometimes needs four lines, and "put it in a design doc"
+moves the explanation away from the only place the reader is confused. The budget stayed; the
+absolute went. Earning the space means the comment shows, in its first line, what is not obvious -
+which is also the test that stops the exception swallowing the rule. The class-level block is
+allowed to be longer because it documents a contract rather than a line of code.
 
 **5.4** Documentation decays unless it is repaired, so repair is planned. It is not done as a
 drive-by because a real edit should not hide inside cleanup noise.
@@ -201,7 +231,11 @@ before anyone presses Play; the runtime pass catches data that only goes wrong i
 ## 7. Blueprint and content naming
 
 **7.1** A prefix that is sometimes one thing and sometimes another cannot be searched for. Where the
-community uses two, we pick the one that matches our C++ convention.
+community uses two, we pick the one that matches our C++ convention. `HDRI_` is the one place we
+carry two prefixes for a single asset type, because an HDRI is a texture nobody treats as a texture:
+it is picked from a backdrop list, not from the texture browser, and `T_Overcast` would sort it
+away from the thing it belongs to. The cost is that the validator has to accept either for every
+texture class, which is why no second exception is worth it.
 
 **7.3** Spaces break command-line tooling and cook paths. A `BS_Idle_Walk_Run_1` next to
 `BS_Idle_Walk_Run` is a decision nobody made. Git holds history; the asset name holds identity.
@@ -579,6 +613,75 @@ character, with no warning - which is why every format string is verified in PIE
 
 ## 17-18. Checklists
 
-**18.** Retrofitting replication later is a rewrite, and a half-answer produces code that is
-authority-aware in some places and not others. A canonical-examples list points at working code, which
-beats describing it, and stands in for the invented class names used throughout the rule files.
+**17. Why the gate is twelve items.** Until 1.5 the pre-commit checklist was 81 boxes. Nobody runs 81
+boxes before a commit, so in practice nobody ran any, and a checklist people skip teaches that the
+standard is advisory. The twelve are the ones where no tool can help and where being wrong is
+expensive to undo - ownership, lifetime, threading, authority, reference cost. Everything else either
+has a tool or is a reviewer's job, and 17.4 exists so that the list keeps shrinking: a checklist item
+a tool could check is a defect in the tooling, not a reason to read harder.
+
+**18. Why tiers.** The previous version asked for 25 decisions before the first feature, which is
+right for a console production and absurd for a two-person prototype - and a standard that cannot be
+partially adopted gets wholly ignored. Tier 1 is the set that is expensive or impossible to change
+later: module boundaries, the content root, the short name, replication, and LFS before the first
+binary asset. Everything in Tier 2 and Tier 3 can be retrofitted at a known cost. Retrofitting
+replication later is a rewrite, and a half-answer produces code that is authority-aware in some
+places and not others - which is why it is Tier 1 and why the answer is written down either way. A
+canonical-examples list points at working code, which beats describing it, and stands in for the
+invented class names used throughout the rule files.
+
+---
+
+## 19. Audio
+
+Audio is the system most often left to one person and discovered late. The rules here are the ones
+whose absence is audible in a shipped game: an uncapped one-shot that turns a firefight into mush, a
+per-call volume multiplier that makes the mix untunable, a looping sound that outlives its owner, and
+a footstep on an animation notify that a blend-out silently drops. Concurrency is mandatory rather
+than recommended because the failure only appears under load - twenty impacts in one frame - which is
+exactly the case nobody tests until it ships. The rest follows the same shape as every other system
+here: intent from gameplay, decisions in data, one owner per loop.
+
+---
+
+## 20. Accessibility and localisation
+
+These are together because they fail the same way: both are cheap when designed in and ruinous when
+retrofitted, both constrain layout before the first screen exists, and both are checked at
+certification. A fixed-height text box is fine until the German string arrives; a colour-coded team
+indicator is fine until it reaches a player who cannot see the difference. Retrofitting either means
+touching every screen.
+
+The greyscale-screenshot test is in the rules because it is the cheapest real check that exists: it
+takes ten seconds and it catches the entire class of colour-only communication. The 30-40 per cent
+expansion budget is not a guess - it is what translation actually does to English UI strings, and the
+button that fits its English label exactly is the single most common localisation bug.
+
+---
+
+## 21. The online module
+
+1.1 creates the module and says to keep HTTP out of the game module; this section says what goes in
+it, because "the online module" was otherwise a folder with no rules. The boundary rule - wire types
+never leave - is the same separation of concerns as everywhere else, and it pays when the backend
+renames a field and exactly one file changes.
+
+The security rules are deliberately blunt about one thing: a shipped client holds no secret that
+matters. Anything the client can reach, a player can extract from the binary or the traffic, so the
+question is never "how do we hide this key" but "why is this call happening on the client". The
+certificate-verification rule is written as a compile-time gate rather than a warning because a
+development bypass that can be switched on in a Shipping build eventually is one.
+
+---
+
+## 22. Engine upgrades
+
+The precedence order puts the engine above this standard, which means this standard is only
+trustworthy while its engine claims are true - and they decay every release. Without a written
+re-verification list, the claims stay in the document long after they stop being facts, and the
+document becomes exactly the folklore it was written to replace.
+
+The list in 22.2 is deliberately specific about *where* each claim was verified, because the
+expensive part of re-checking is not reading the source, it is finding which source to read. Deleting
+a trap the engine has fixed matters as much as fixing a claim that changed: carried workarounds are
+how a codebase accumulates ritual nobody can justify.
