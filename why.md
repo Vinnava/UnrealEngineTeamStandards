@@ -76,6 +76,11 @@ module and makes the wire contract reviewable in isolation. It also limits rebui
 confined to the online module's `.cpp` files does not recompile the game module. A change to its
 public headers still does - which is why that public surface stays small.
 
+Modules are created on demand because an empty module is not free: it is a `.Build.cs`, a module
+class and a `.uproject` entry to keep building, and it tells every reader the project has a system it
+does not have. Creating one later costs one regenerate and one build (1.2), so nothing is saved by
+creating it early.
+
 **1.2 Build.cs discipline.** A dependency list nobody can prune is a dependency list that only grows.
 The one-line comment is what makes pruning possible later.
 

@@ -7,7 +7,7 @@ Where a project has to pin something down - its module name, content root or sho
 standard uses a `<Project>` placeholder, and that project's `CLAUDE.md` fills it in - from
 [`tooling/project-template/`](tooling/project-template/).
 
-**Version 2.0.0** - see the [changelog](CHANGELOG.md). **Owner: @Vinnava** ("Ownership" below). Written against **Unreal Engine 5.x**. Every
+**Version 2.0.1** - see the [changelog](CHANGELOG.md). **Owner: @Vinnava** ("Ownership" below). Written against **Unreal Engine 5.x**. Every
 claim about engine behaviour was checked against **UE 5.7** source, and the defaults that matter
 were re-checked in **5.8**. Where a rule depends on the engine version, it says so.
 

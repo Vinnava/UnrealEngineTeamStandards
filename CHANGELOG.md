@@ -1,5 +1,13 @@
 # Changelog
 
+**2.0.1 - 2026-09-25**
+
+- **1.1 says modules are created on demand.** Only `<Project>` is required; the online, editor and
+  prototype modules are each created the day the project first needs one. The table read as a set
+  every project starts with, so ZRK's `CLAUDE.md` recorded "no `ZRKOnline`" as though it were a gap.
+  The project template lists only the modules a project has, and 18.1 no longer asks for the modules
+  up front. The rules for what goes in each module are unchanged.
+
 **2.0.0 - 2026-09-24**
 
 **The first release meant for production.** 1.0 to 1.9 were the drafting of the standard; 2.0.0 fixes
