@@ -17,7 +17,7 @@ rather than impressions.
       should decide by vote rather than inherit. Do not reopen it during the pilot.
 - [ ] **Name the art lead and the design lead who will extend section 23.** It covers only what is
       verified in engine source; their workflows are the rest of it.
-- [ ] **Add the standard as a submodule pinned to `v2.0.0`**, and create the project `CLAUDE.md` from
+- [ ] **Add the standard as a submodule pinned to `v2.0.1`**, and create the project `CLAUDE.md` from
       [`tooling/project-template/`](tooling/project-template/).
 - [ ] **Install the validators in the project's editor module** and confirm they load. They are
       proven to compile and to catch what they claim in a scratch project on 5.7

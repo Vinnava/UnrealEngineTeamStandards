@@ -9,11 +9,15 @@ is in [why.md](../why.md).
 
 ### 1.1 Modules
 
-| Module | Contains |
-|---|---|
-| `<Project>` | Main game module - gameplay, characters, UI, subsystems |
-| `<Project>Online` | HTTP, JSON, auth, backend service classes, wire types - rules in section 21 |
-| `<Project>Editor` | Editor-only tooling, if any |
+**Only the game module is required. Every other module is created the day the project first needs
+it, not up front** - a project with no backend has no online module, and that is not a gap.
+
+| Module | Contains | Create it when |
+|---|---|---|
+| `<Project>` | Main game module - gameplay, characters, UI, subsystems | Always |
+| `<Project>Online` | HTTP, JSON, auth, backend service classes, wire types - rules in section 21 | The project first talks to a backend |
+| `<Project>Editor` | Editor-only tooling (1.4) | The first editor-only code is written |
+| `<Project>Prototype` | Prototype code (1.6) | The first prototype starts |
 
 - Keep `HTTP` / `Json` dependencies out of the game module.
 - Keep the online module's public headers small - a change to them recompiles the game module.

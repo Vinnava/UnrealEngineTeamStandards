@@ -38,18 +38,19 @@ lives elsewhere.
 
 **Record which version** (the README header) so a reader can tell whether a rule has moved on:
 
-> Standard version: 2.0.0
+> Standard version: 2.0.1
 
 ## This project
 
 - **Short name:** `<Project>` - class infixes, log categories, console commands (4.4, 4.8, 4.11).
 - **Content root:** `Content/_<Project>/` (2.1).
-- **Modules:** `<Project>`, and `<Project>Online` if there is a backend (1.1).
+- **Modules:** `<Project>`, plus only the modules this project actually has (1.1). List what exists;
+  a module the project does not need yet is not recorded as missing.
 - **Replication:** *this project replicates* / *this project is single-player* - pick one, in these
   words (11.1). If it replicates, say whether push model and Iris are on (11.8).
 - **Engine version:** `5.x`, and whether the project tracks minor releases (22.1).
-- **Prototype module:** `<Project>Prototype`, type `DeveloperTool` - held only to the safety rules
-  (1.6). Code copied out of it is rewritten, not moved.
+- **Prototype module, once the first prototype starts:** `<Project>Prototype`, type `DeveloperTool` -
+  held only to the safety rules (1.6). Code copied out of it is rewritten, not moved.
 - **Standard contact:** the person who raises this project's `CONFLICT` blocks with the standard's
   owner (README, "Ownership").
 - **CI:** `python standards/tooling/check-project.py .` and the `DataValidation` commandlet, both in

@@ -18,11 +18,12 @@ down; doing Tier 3 before Tier 1 is how a project ends up with perfect CI and no
 **Everything here is expensive or impossible to change later.** This is the minimum for any project
 that will outlive the prototype.
 
-- [ ] **The standard added as a submodule pinned to a release tag** (`v2.0.0`), never a branch - so
+- [ ] **The standard added as a submodule pinned to a release tag** (`v2.0.1`), never a branch - so
       the project upgrades when it decides to (README, "Versioning")
-- [ ] Module split decided (`<Project>` / `<Project>Online`) - 1.1
-- [ ] A `<Project>Prototype` module of type `DeveloperTool`, so prototype code has a legitimate home
-      that never ships - 1.6
+- [ ] The `<Project>` game module in place. The online, editor and prototype modules are created
+      the day each is first needed, not now - 1.1
+- [ ] Agreed that the first prototype starts a `<Project>Prototype` module of type `DeveloperTool`,
+      so prototype code has a legitimate home that never ships - 1.6
 - [ ] Source folder skeleton in place - 1.3
 - [ ] Content root `Content/_<Project>/` created, folder skeleton in place - 2.1
 - [ ] Project short name pinned, for class infixes and short variable names - 4.4, 4.8
