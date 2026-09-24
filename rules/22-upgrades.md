@@ -35,6 +35,15 @@ upgrade, not a suggestion.
 | `Net.IsPushModelEnabled`, `net.Iris.UseIrisReplication` defaults and Iris status | 11.8 | `NetCVars.cpp`, `IrisCore`, the release notes |
 | `ENABLE_DRAW_DEBUG` in Test and Shipping | 3.7 | `EngineDefines.h`, where it is the alias `UE_ENABLE_DEBUG_DRAWING`; `ENABLE_DRAW_DEBUG` itself is defined in `DrawDebugHelpers.h` |
 | The thread-safe animation update contract | 10.6 | `AnimInstance.h` |
+| A task continuation can target the game thread via `EExtendedTaskPriority::GameThreadNormalPri` | 10.4 | `Tasks/TaskPrivate.h` - the enum, and the `Launch` overload with prerequisites in `Tasks/Task.h` |
+| `TAtomic` deprecated in a comment only, with no `UE_DEPRECATED` | 10.8 | `Templates/Atomic.h`. If Epic adds the macro, the compiler takes over and the 17.4 grep can go |
+| `UE::FMutex` is one byte and non-recursive; `FCriticalSection` is a recursive platform mutex | 10.8 | `Async/Mutex.h`, `HAL/CriticalSection.h` |
+| A `DeveloperTool` module is left out of Test and Shipping game builds | 1.6 | `bBuildDeveloperTools` in UBT's `TargetRules.cs`, and `ModuleDescriptor.cs` |
+| A non-power-of-two texture never streams | 16.8, 23.1 | `UTexture::IsPossibleToStream` in `Texture.cpp` |
+| `AActor::GetActorLabel` is editor-only | 16.3, 23.3 | The `#if WITH_EDITOR` block around it in `Actor.h` |
+| A validator returning `NotValidated` after accepting an asset fires an ensure | 16.9, tooling | `UEditorValidatorBase::ValidateLoadedAsset` in `EditorValidatorBase.cpp` |
+| `Interchange.FeatureFlags.Import.SyncToBrowser` overrides an import task's `bSyncToBrowser` | 16.9 | `ImportAssetsInternal` in `AssetTools.cpp` |
+| `GlobalConfig` loads from the declaring base class's section | tooling | `CPF_GlobalConfig` in `ObjectMacros.h` - then re-run the validator test in `tooling/README.md` |
 | Editor validator API shape | 18, tooling | `EditorValidatorBase.h` - the virtual signatures move between versions |
 | Every trap in section 16 | 16 | Re-test the ones the project relies on; a fixed trap is worth deleting |
 

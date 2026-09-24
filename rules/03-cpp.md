@@ -160,6 +160,11 @@ wrapper and no `*` dereference (section 6).
   calling the widget's setter. Never a UMG property binding and never `NativeTick` (12.6): the
   display timer is the push that rule asks for.
 - **No magic numbers.** Named `static const` or `constexpr`, declared next to what they govern.
+- **No mutable `static` or global state** - no function-local `static` counter, file-scope cache or
+  global singleton pointer. `constexpr` and `static const` are fine. Mutable statics fail twice: they
+  **survive between PIE sessions**, because the editor process and its modules outlive every play
+  session, so a second Play starts with the first one's leftovers; and they become a data race the
+  moment anything runs in parallel (10.8). State belongs to an owner (9.4) - usually a subsystem.
 - **No switch statements on identity** (9.2).
 - **Prefer composition over deep inheritance chains.**
 

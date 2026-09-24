@@ -37,6 +37,38 @@ unmarked rules unconditional, which is the property worth protecting.
 
 ---
 
+## Ownership, versioning and the pilot
+
+**Why one named owner.** Until 2.0 the README said the standard "has an owner" and then delegated the
+naming to each project's README - so nobody was named, and every process that depends on an owner
+(deciding disputes, re-verifying on upgrade, promoting traps, pruning) had no one to run it. A standard
+with no owner is maintained by whoever is annoyed enough that week, which in practice means nobody.
+
+**Why semantic versioning, and why only one rule is gated.** 1.0 to 1.9 shipped in four weeks,
+including a rename of every file. That was right while the standard was being drafted and would be
+wrong once projects depend on it: the standard's main job is to stay put. The version number is
+now a promise to a reader pinned to `2.x` that no `2.x` release reversed a rule under them. Of the
+whole release policy, that promise is the one part a tool can hold, so it is the part the checker
+enforces; cadence is left to the owner's judgement.
+
+**Why a pilot before calling it proven.** Everything in this standard was checked against the engine;
+almost none of it has been checked against a team shipping a milestone. Those are different kinds of
+evidence. The pilot measures the second kind with numbers - overrides, skipped gate items, falling
+checker counts - because opinions about a standard tend to reflect who wrote it more than whether it
+works. The override count is the most honest of them: many overrides on one rule means the rule is
+wrong, and none anywhere means nobody is following it closely enough to disagree.
+
+**Why an onboarding page instead of a shorter standard.** Nobody reads two hours of rules, and cutting
+the rules would lose what they encode. The fix was an entry point, not a diet: fifteen minutes on the
+pillars, the gate, the first debugging steps and the traps that cost new people the most, and "read
+the rest the day you need it".
+
+**Why the always-loaded set has a token budget.** Every always-loaded rule is paid for on every
+assistant request, forever, and each addition looks cheap on its own. A budget with a failing check
+turns "the file got a bit longer" into a decision someone makes on purpose.
+
+---
+
 ## 1. Project and module structure
 
 **1.1 Modules.** The split is not ceremony. It keeps `HTTP` / `Json` dependencies out of the gameplay
@@ -57,6 +89,13 @@ every author getting every guard right.
 **1.5 Plugins and engine changes.** An engine patch is paid for again at every engine upgrade, usually
 by someone who did not write it. Undocumented patches are why teams get stranded on old engine
 versions.
+
+**1.6 Prototype code.** The failure this prevents is not prototypes existing - it is prototype code
+leaking into the game with its waivers intact. A `DeveloperTool` module makes the fence physical: the
+Shipping binary cannot contain what was never compiled into it. The rule that graduating means
+rewriting, not moving, is the one that matters most and will be tested hardest, because moving code
+is always faster on the day. Moved prototype code arrives without plans, tests or ownership, and it
+is indistinguishable afterwards from code that had them.
 
 ## 2. Content folder structure
 
@@ -370,6 +409,11 @@ cache that is not a small number. Dropping the streamable handle releases your r
 asset can be collected the same frame. A hitch is almost always a load that started when the asset
 was needed.
 
+The `sync-load-ok:` marker exists so the rule can be enforced without banning the legitimate cases.
+Without it, a checker has two choices - flag every `LoadSynchronous`, and be disabled within a week,
+or flag none. The marker makes the exception explicit, greppable and reviewable at the one place it
+happens.
+
 **10.4** `.Then()` runs on an unspecified thread, so a continuation chain ends up hand-writing the same
 marshalling step with an extra layer of indirection. If a worker needs a lock, the snapshot was too
 narrow. A pipe beats a mutex because nobody waits and it cannot deadlock. A thread firing into a
@@ -380,6 +424,46 @@ into an object that may be gone.
 
 **10.6** The thread-safe update is safe precisely because it only reads the copies the game-thread
 update made. Animation is usually the largest line on the game thread.
+
+**10.7** The stale-result bug is the worst kind: no crash, no log, no repro. A player acts while a
+recalculation runs; the recalculation lands a frame later and puts back the state from before the
+action. Until 1.9 this standard's own 10.1 example applied its result unconditionally, which is
+correct only when nothing else can write the data - and the example did not say so. A generation
+counter is a single integer compare, and it depends on 9.4: a counter incremented on every write is
+only possible when writes go through one place.
+
+**10.8** The ladder puts the lock last because every rung above it removes a way to get locking wrong.
+`UE::FMutex` is preferred to `FCriticalSection` for a specific reason, not novelty: a recursive mutex
+lets code re-enter a lock it already holds, which hides the design problem - a locked region large
+enough to call back into itself - until it becomes a deadlock across two locks in production. A
+non-recursive mutex turns that into a deadlock the first time the test runs. `TAtomic` gets its own
+rule because its deprecation is the unusual kind that no tool reports: a comment in `Atomic.h`, with
+no `UE_DEPRECATED`, so new code compiles clean.
+
+**10.9** Threading costs the most when it is done earliest. Early on the bottleneck is unknown - a
+prototype that threads a 0.1 ms system while the frame is lost to shader compilation has bought
+complexity and nothing else. The four criteria are all-of rather than any-of because each one alone
+has sunk a threading effort: the game thread was not bound, the system was not the cost, the work
+could not be separated from `UObject`s, or the design could not absorb a frame of latency. The design
+half of threading is cheap and is required everywhere (10.4, 9.4, 10.7); only the implementation half
+waits for evidence.
+
+**10.10** Callback-shaped APIs and frame-late tolerance cost real complexity in every caller, so
+applying them everywhere "to be ready" is how a codebase becomes hard to read for a threading effort
+that never happens. The registry restricts that cost to the systems with evidence behind them, and
+makes over-applying the pattern a review defect rather than extra diligence. It is `[team-size]`
+because keeping it honest needs profiling milestones on target hardware; without those it is a list
+nobody updates.
+
+**Where these came from.** 10.7 to 10.10, the gather-snapshot rule in 10.4, the single write path and
+data-in-structs rules in 9.4, and the mutable-statics rule in 3.7 are folded in from a separate
+multithreading standard. It arrived with its own rule IDs (`MT-D3`) and its own strength levels
+(Mandatory, Candidate-only, Configured). Both were dropped rather than imported: a second numbering
+scheme is exactly what 1.8 removed, and a second strength system alongside `[team-size]` would make a
+reader learn two ways of saying "this applies to you". About 60 per cent of it was already here; the
+duplicates were not repeated. Where it contradicted this standard - `UE_LOG` in its examples, a null
+check where 3.4 requires `IsValid`, `check(IsInGameThread())` rated only Recommended - this standard
+won under precedence rule 3, and the imported material was corrected on the way in.
 
 ---
 
@@ -635,6 +719,20 @@ otherwise appears to work.
 `switch` with `default: AppendChar(*Format)`, so an unrecognised token is emitted as its own literal
 character, with no warning - which is why every format string is verified in PIE.
 
+**16.9 Editor automation** *(real case, in this standard's own tooling)*. The three traps in 16.9 were
+found by running this standard's validators in a headless editor for the first time, in 2.0. Until
+then they had been compiled but never run. The first run crashed on an automated import, because an
+engine console variable overrides the import task's own setting. Once it ran, it showed that every
+Blueprint was reported twice, and that an engine `ensure` had fired on every validation run since
+1.0, from a code path that returned "not validated" after accepting an asset. None of the three can be
+seen by reading the code or by compiling it. That is the argument for the validator harness in
+`tooling/tests/`: the gap between compiled and working was exactly where the bugs were.
+
+**The non-power-of-two texture** *(verified, and nearly removed)*. In 5.7 the editor stopped setting
+`NeverStream` on non-power-of-two textures, and the source comment says so. Read on its own, that looks
+as if the old rule is dead. It is not: the refusal moved to runtime, into `IsPossibleToStream`. It is
+recorded as a trap because the obvious way to check for it - the asset's flag - no longer works.
+
 ---
 
 ## 17-18. Checklists
@@ -728,3 +826,17 @@ The list in 22.2 is deliberately specific about *where* each claim was verified,
 expensive part of re-checking is not reading the source, it is finding which source to read. Deleting
 a trap the engine has fixed matters as much as fixing a claim that changed: carried workarounds are
 how a codebase accumulates ritual nobody can justify.
+
+---
+
+## 23. Content pipeline
+
+The section is deliberately small. Content rules written by programmers tend to be either
+unenforceable or wrong about how artists work, and both kinds teach a team that the content rules are
+optional. So 23 holds only what is verified in engine source or checked by `AssetContentValidator`,
+and says openly that the art and design leads own the rest.
+
+The texture and mesh budgets are **configured, not fixed** - 4096 and 1000 are defaults, not engine
+limits - because the right number depends on the target platform, and a hard-coded budget is either
+too loose for mobile or too tight for PC. What is not configurable is that the budget exists and
+fails the build.

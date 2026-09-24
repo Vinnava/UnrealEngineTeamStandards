@@ -90,6 +90,10 @@ synonym.
 - **`Get` has no side effects.** If it lazily loads, caches or hydrates, it is a `Resolve` or an
   `Ensure`.
 - **`Do*` holds no logic.** It lives only on the player-facing class and forwards to a component (9.9).
+- **A function that can complete later ends in `Async`** - `RequestLookupIndexAsync`,
+  `RequestSaveAsync`. The verb still comes first; `Async` is a suffix, never a verb. **A synchronous
+  function never carries it.** A threading candidate's callback-shaped API keeps the suffix even while
+  it completes synchronously, because its contract allows deferral (10.10).
 
 ### 4.4 Class name composition
 

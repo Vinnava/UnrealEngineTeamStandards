@@ -1,5 +1,112 @@
 # Changelog
 
+**2.0.0 - 2026-09-24**
+
+**The first release meant for production.** 1.0 to 1.9 were the drafting of the standard; 2.0.0 fixes
+the nine problems an engineering-lead review found with adopting it, and is the version the pilot runs
+on ([PILOT.md](PILOT.md)). From here, releases follow semantic versioning (README, "Versioning").
+
+**Owner: @Vinnava.**
+
+Governance - the standard had no owner, no release discipline and no evidence from real use:
+
+- **A named owner**, in the README, with [`.github/CODEOWNERS`](.github/CODEOWNERS) requesting their
+  review on every pull request and a quarterly duty list. Until now "it has an owner" pointed at each
+  project's README, so nobody was named.
+- **Semantic versioning, with tags.** A project pins a release as a submodule, not a branch. A release
+  whose changelog carries a "Rule change:" bullet must be a major version, and `check-standard.py`
+  fails one that is not.
+- **[PILOT.md](PILOT.md)**: one project, one milestone, measured by overrides written, gate items
+  skipped, falling checker counts and traps added - and a retro that keeps, changes or deletes each
+  section on that evidence.
+- **[ONBOARDING.md](ONBOARDING.md)**: the fifteen minutes a new starter needs in week one, instead of
+  the two-hour whole.
+
+Tooling - the validators had been compiled once and never run; they now are, and three bugs fell out:
+
+- **The validators were run in a headless editor for the first time**, against assets built to pass,
+  fail and warn, using the `DataValidation` commandlet CI runs. The first run found three bugs no
+  compile could show: an engine `ensure` that had fired on every validation run since **1.0**, from a
+  path returning `NotValidated` after accepting an asset; every Blueprint reported twice, once as its
+  generated class; and the unmapped-type path returning no verdict. All three are fixed, and the
+  engine behaviours behind them are now traps in 16.9.
+- **[`tooling/tests/validator-harness/`](tooling/tests/validator-harness/)** makes that run repeatable:
+  one command compiles the validators with no PCH and no unity build, builds eleven test assets, and
+  checks nineteen outcomes, including that a warning alone exits 0 and an error exits 1. It passes.
+- **New `AssetContentValidator`** for the checkable content rules in section 23: a non-power-of-two
+  texture that can never stream, a texture over the size budget, a heavy non-Nanite mesh with no LODs.
+- **New `ProjectValidatorBase`.** Both validators read the content root from one `GlobalConfig`
+  setting, verified in the engine to be honoured by both subclasses.
+- **New [`tooling/check-project.py`](tooling/check-project.py)** turns six rows of the 17.4 backlog
+  into CI checks on a project's source: `TAtomic`, `LogTemp`, unmarked synchronous loads, emoji and
+  `U+FFFD`, the threading-candidate registry, and - as warnings - mutable statics and mixed logging.
+  Its `--warn-only` mode is the retrofit path 18.4 asks for. 17.2 marks those items **[tool]**, and
+  they have left 17.4.
+- **Tests in CI - 31 of them.** Nineteen give every `check-project.py` check a case that must fire and
+  one that must not; twelve change a copy of this repository one way at a time and assert
+  `check-standard.py` reacts correctly - including the backspace-in-a-regex bug from 1.8, and a release
+  that bumps minor while changing a rule's meaning.
+- **An always-loaded token budget.** The set every project imports is 21,300 tokens against a
+  22,000 budget, and `check-standard.py` fails a change that goes over it.
+
+Rules:
+
+- **New 1.6, Prototype code.** A `<Project>Prototype` module of type `DeveloperTool` - verified to be
+  left out of Test and Shipping builds - held only to the safety rules, rewritten rather than moved
+  when it graduates.
+- **New section 23, [Content pipeline](rules/23-content-pipeline.md)**: textures, meshes and levels,
+  limited on purpose to what is verified in engine source or checked by the validator. The art and
+  design leads extend it during the pilot.
+- **Rule change: an allowed synchronous load outside an editor module now carries a
+  `// sync-load-ok: <reason>` marker** (10.3). It was allowed before without one; the marker is what
+  lets `check-project.py` tell an exception from a hitch.
+- **New traps.** 16.3: an actor's label does not exist in a cooked build (`GetActorLabel` is inside
+  `#if WITH_EDITOR`). 16.8: a non-power-of-two texture never streams - still true in 5.7, although the
+  refusal moved from the `NeverStream` flag to runtime, so checking the flag no longer finds it. New
+  16.9, editor automation: the three engine behaviours the validator run exposed.
+- **22.2 gains six rows** for the version-pinned claims above.
+- **18** adds the submodule pinned to a tag, the prototype module, both validators and the project
+  checker to the adoption tiers.
+
+**1.9 - 2026-09-24**
+
+A separate multithreading standard folded in. About 60 per cent of it was already here and was not
+repeated. What was new is below, rewritten to this standard's conventions - its `MT-` rule IDs and its
+own strength levels were dropped rather than imported, because a second numbering scheme is what 1.8
+removed. Every engine claim was re-checked against UE 5.7 source on the way in, and two of them were
+sharpened.
+
+- **Found a bug in this standard: 10.1's example applied its result unconditionally.** It was correct
+  only when nothing else could write the data while the task ran, and did not say so. 10.1 now says
+  so, and points to the fix.
+- **New 10.7, Stale results.** A generation counter on each owned data set, recorded at gather and
+  compared at apply, so a late result cannot silently overwrite a newer player action. Every write path
+  increments it - which 9.4's single write path makes enforceable.
+- **New 10.8, Shared state.** A ladder: `TQueue` or `FPipe`, then `std::atomic`, then `UE::FMutex`.
+  The imported doc said `FCriticalSection`; 5.7 has `UE::FMutex`, a one-byte non-recursive mutex, and
+  `FCriticalSection` is a recursive platform mutex (`HAL/CriticalSection.h`). New code uses `UE::FMutex`.
+  **Never `TAtomic`** - deprecated, but only in a comment (`Atomic.h`), so the compiler never warns.
+- **New 10.9, Thread on evidence.** Four criteria, all required, before any system moves off the game
+  thread; before and after captures in the pull request.
+- **New 10.10, Threading candidates** (`[team-size]`). A registry in the project `CLAUDE.md`; only
+  registered systems get callback-shaped APIs and the `Async` suffix, and over-applying them is a
+  review defect.
+- **10.4: a task continuation does not run on the game thread by default.** The imported doc said a
+  continuation could return results to the game thread, which is true only when it is launched with
+  `UE::Tasks::EExtendedTaskPriority::GameThreadNormalPri` (`Tasks/TaskPrivate.h`). A default
+  continuation applies on a worker.
+- **10.4: pure compute functions from the start, a gather snapshot holds IDs never pointers, and async
+  logs name their phase** (`[Dispatch]`, `[Worker]`, `[Apply]`).
+- **10.1: thread affinity is stated in the header comment** where it is not the default.
+- **9.4: every write goes through the owner's API, and gameplay data lives in a `USTRUCT` the owner
+  holds.**
+- **3.7: no mutable `static` or global state.** Beyond the threading argument, mutable statics survive
+  between PIE sessions today - the editor process outlives every Play.
+- **4.3: a function that can complete later ends in `Async`**; a synchronous one never does.
+- **22.2 gains three rows** for the version-pinned claims above, and **17.4 gains three greps**.
+- **`tooling/check-standard.py` now fails when the project template's version disagrees with the
+  README.** 1.8 shipped the template still saying 1.7.
+
 **1.8 - 2026-09-17**
 
 **Every rule file is now named for the sections it holds.** A number means one thing everywhere.

@@ -77,6 +77,12 @@ is in [why.md](../why.md).
 - **State is owned by an event guaranteed to run** - never a cosmetic callback, a UMG tick, or an
   animation notify that a map load or blend-out can interrupt (section 16).
 - **A completion signal fires exactly once**, from the code that owns the operation.
+- **Every write goes through the owner's API.** No other class reaches in and mutates the data,
+  even when a `UPROPERTY` makes it possible. That single write path is where synchronisation, a
+  thread hand-off or a stale-result counter (10.7) is added later without touching a caller.
+- **Gameplay and simulation data lives in a `USTRUCT` the owner holds.** The `UObject` owns and
+  exposes that data; it is not the data. A struct can be copied to a worker, saved, diffed and
+  unit-tested; a `UObject`'s scattered members can do none of those.
 - **An invariant re-established rather than enforced logs a Warning** (6.3).
 - **Capture before you transition.** Copy what a transition will clear into a local *before* calling
   it:

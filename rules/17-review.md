@@ -64,11 +64,12 @@ when you are new and building the habit. Items marked **[tool]** are already enf
 - [ ] Every new `UPROPERTY` / `UFUNCTION` / enumerator has a Doxygen comment (5.1)
 - [ ] Comments are two lines, or earn the space they take (5.2)
 - [ ] Comments explain *why*, not *what* (5.3)
-- [ ] **[tool]** No emojis, no `U+FFFD` (5.5, CI grep - 17.4)
+- [ ] **[tool]** No emojis, no `U+FFFD` (5.5, `check-project.py`)
 - [ ] No commented-out code; no anonymous `TODO` (5.5)
 
 **Logging**
 
+- [ ] **[tool]** No `LogTemp` in committed code (6.2, `check-project.py`)
 - [ ] Category declared with `DEFINE_LOG_CATEGORY_STATIC` in the `.cpp` unless several files share
       it, named `Log<Project><Domain>` (6.2)
 - [ ] `UE_LOGFMT`, not `UE_LOG`, in new and modified lines, with arguments in token order (6.5)
@@ -83,11 +84,24 @@ when you are new and building the habit. Items marked **[tool]** are already enf
       `GetWorld()` before touching anything world-dependent (10.2)
 - [ ] Delegates bound from a `UObject` use `AddUObject` / `AddWeakLambda`, never `AddLambda`
       capturing `this` (9.3)
+- [ ] **[tool]** No synchronous load in gameplay code without a `sync-load-ok:` marker (10.3,
+      `check-project.py`)
 - [ ] Every async load stores its handle and has a fallback for the not-loaded window; no gameplay
       path calls `LoadSynchronous` (10.3)
 - [ ] Worker-thread code follows gather, compute, apply; AnimBP derivation is in the thread-safe
       update (10.4, 10.6)
 - [ ] Any new `FRunnable` is stopped and joined from its owner's teardown (10.4)
+- [ ] Every async apply that can race a write checks a generation counter, and every write path to
+      that data increments it (10.7)
+- [ ] **[tool]** No `TAtomic` (10.8, `check-project.py`)
+- [ ] Shared state uses the 10.8 ladder - `TQueue` or `FPipe`, then `std::atomic`, then `UE::FMutex`;
+      no call out while a lock is held (10.8)
+- [ ] **[tool]** No mutable `static` or global state (3.7, `check-project.py`, warning only)
+- [ ] Anything newly threaded meets all four 10.9 criteria, with before and after captures linked in
+      the PR (10.9)
+- [ ] Candidate patterns - callback-shaped API, `Async` suffix, split gather/compute/apply - appear
+      only on registered threading candidates (4.3, 10.10)
+- [ ] Thread affinity is stated in the header comment wherever it is not the default (10.1)
 
 **Networking** (if the project replicates)
 
@@ -120,6 +134,8 @@ when you are new and building the habit. Items marked **[tool]** are already enf
 
 **Content**
 
+- [ ] **[tool]** Textures stream and fit the size budget; heavy non-Nanite meshes have LODs (23.1,
+      23.2, `AssetContentValidator`)
 - [ ] **[tool]** New assets carry the correct type prefix and PascalCase name (7.1-7.3,
       `AssetNamingValidator`)
 - [ ] No vendor, tool, scratch or history names (`_Final`, `_v2`, `_test`) (7.3)
@@ -165,9 +181,7 @@ This is the backlog; each entry moves out of 17.2 when it lands.
 
 | Check | How |
 |---|---|
-| Emojis and `U+FFFD` in source, content and commit messages (5.5) | A CI grep, and a commit hook |
-| `LogTemp` in committed code (6.2) | A CI grep |
-| `UE_LOG` in a file that also uses `UE_LOGFMT` (6.5) | A CI grep, warning only |
+| Emojis in commit messages (5.5) - source is already checked | A commit-msg hook |
 | Header section order (3.1) | A clang-tidy style check, or a small parser |
 | A `UObject*` member without `UPROPERTY` (3.8) | UHT already knows the reflected set - a commandlet can diff it |
 | `Event Tick` in a Blueprint with no approval comment (3.12) | A `UEditorValidatorBase` subclass (18) |

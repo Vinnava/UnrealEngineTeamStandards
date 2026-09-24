@@ -32,10 +32,13 @@ is the one worth carrying on every request.
 `00-core.md` is not optional. It carries the ranked pillars every `CONFLICT` block is decided by, the
 precedence order, and the `<Project>` convention.
 
-Adjust the paths to wherever the standard lives - a submodule, a sibling checkout, a vendored copy.
+The paths assume the standard is a git submodule at `standards/`, **checked out at a release tag** -
+never a branch, so the project upgrades when it decides to (README, "Versioning"). Adjust them if it
+lives elsewhere.
+
 **Record which version** (the README header) so a reader can tell whether a rule has moved on:
 
-> Standard version: 1.7
+> Standard version: 2.0.0
 
 ## This project
 
@@ -45,6 +48,12 @@ Adjust the paths to wherever the standard lives - a submodule, a sibling checkou
 - **Replication:** *this project replicates* / *this project is single-player* - pick one, in these
   words (11.1). If it replicates, say whether push model and Iris are on (11.8).
 - **Engine version:** `5.x`, and whether the project tracks minor releases (22.1).
+- **Prototype module:** `<Project>Prototype`, type `DeveloperTool` - held only to the safety rules
+  (1.6). Code copied out of it is rewritten, not moved.
+- **Standard contact:** the person who raises this project's `CONFLICT` blocks with the standard's
+  owner (README, "Ownership").
+- **CI:** `python standards/tooling/check-project.py .` and the `DataValidation` commandlet, both in
+  the every-commit tier (14.5); `--warn-only` until the backlog is clear (18.4).
 
 ## Project overrides
 
@@ -74,6 +83,18 @@ beats describing a pattern, and it gives the assistant something to match.
 
 This project's section 16 - engine or codebase behaviour that fooled someone here once. A trap a
 second project hits moves into the standard (README, "Changing this standard").
+
+## Threading candidates
+
+Systems registered under 10.10 - the only ones that get callback-shaped APIs, an `Async` suffix and a
+split gather/compute/apply before they are threaded. Every other system stays synchronous. Delete this
+section on a project too small to run profiling milestones (10.10 is `[team-size]`).
+
+| System | Owner | Criteria met (10.10) | Registered | Last reviewed |
+|---|---|---|---|---|
+| | | | | |
+
+Each system listed here carries `THREADING-CANDIDATE` in its class comment.
 
 ## How to work here
 

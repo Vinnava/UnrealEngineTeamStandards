@@ -117,24 +117,12 @@ namespace AssetNamingValidator
 	}
 } // namespace AssetNamingValidator
 
-UAssetNamingValidator::UAssetNamingValidator()
-{
-	contentRoot = TEXT("/Game/_Game");
-}
-
 bool UAssetNamingValidator::CanValidateAsset_Implementation(
 	const FAssetData& assetData, UObject* object, FDataValidationContext& context) const
 {
-	if (!IsValid(object) || contentRoot.IsEmpty())
-	{
-		return false;
-	}
-
-	// Trailing slash on both sides, so /Game/_Game does not also match /Game/_GameOld
-	FString root = contentRoot;
-	root.RemoveFromEnd(TEXT("/"));
-	const FString packagePath = assetData.PackagePath.ToString() + TEXT("/");
-	return packagePath.StartsWith(root + TEXT("/"));
+	// A Blueprint's generated class (BP_Door_C) is validated as an object of its own; the Blueprint
+	// asset carries the name, so classes are skipped rather than reported twice (16.9)
+	return IsValid(object) && !object->IsA<UClass>() && IsUnderContentRoot(assetData);
 }
 
 EDataValidationResult UAssetNamingValidator::ValidateLoadedAsset_Implementation(
@@ -150,19 +138,28 @@ EDataValidationResult UAssetNamingValidator::ValidateLoadedAsset_Implementation(
 		return EDataValidationResult::Invalid;
 	}
 
+	// Every path below ends in AssetPasses or AssetFails. Once CanValidateAsset has accepted an asset,
+	// returning NotValidated fires an ensure in the engine on every validation run (16.9)
 	TArray<FString> requiredPrefixes;
-	FindRequiredPrefixes(assetData, asset, requiredPrefixes);
-	if (requiredPrefixes.IsEmpty())
+	if (!FindRequiredPrefixes(assetData, asset, requiredPrefixes))
 	{
-		// A type with no row is not a pass - it is a gap in the table. Warn rather than fail, so a new
-		// engine type does not block a commit, but the table grows instead of quietly ageing (7.1).
+		// A type with no row is a gap in the table, not a violation by the asset. Warn and pass, so a new
+		// engine type does not block a commit but the table grows instead of quietly ageing (7.1)
 		const FText message = FText::Format(
 			LOCTEXT("UnmappedType", "'{0}' is a '{1}', which has no prefix rule yet - add a row to "
 									"AssetNamingValidator, or a line to standard 7.1 saying it has none."),
 			FText::AsCultureInvariant(assetName),
 			FText::AsCultureInvariant(assetData.AssetClassPath.GetAssetName().ToString()));
 		AssetWarning(asset, message);
-		return EDataValidationResult::NotValidated;
+		AssetPasses(asset);
+		return EDataValidationResult::Valid;
+	}
+
+	// 7.1 deliberately gives this type no prefix - a Blueprint macro library
+	if (requiredPrefixes.IsEmpty())
+	{
+		AssetPasses(asset);
+		return EDataValidationResult::Valid;
 	}
 
 	// The list is longest-first, so this is the longest matching prefix, not merely the first.
@@ -198,7 +195,7 @@ EDataValidationResult UAssetNamingValidator::ValidateLoadedAsset_Implementation(
 	return EDataValidationResult::Valid;
 }
 
-void UAssetNamingValidator::FindRequiredPrefixes(
+bool UAssetNamingValidator::FindRequiredPrefixes(
 	const FAssetData& assetData, const UObject* asset, TArray<FString>& outPrefixes) const
 {
 	outPrefixes.Reset();
@@ -218,21 +215,23 @@ void UAssetNamingValidator::FindRequiredPrefixes(
 	{
 		if (const UBlueprint* blueprint = Cast<UBlueprint>(asset))
 		{
+			// Empty only for a macro library, whose rule is "no prefix" - still a known rule
 			const FString blueprintPrefix = FindBlueprintPrefix(*blueprint);
-			if (!blueprintPrefix.IsEmpty())
+			if (blueprintPrefix.IsEmpty())
 			{
-				outPrefixes.Add(blueprintPrefix);
+				return true;
 			}
+
+			outPrefixes.Add(blueprintPrefix);
 		}
 		else if (IsValid(asset) && asset->IsA<UDataAsset>())
 		{
 			outPrefixes.Add(TEXT("DA_"));
 		}
-	}
-
-	if (outPrefixes.IsEmpty())
-	{
-		return;
+		else
+		{
+			return false;
+		}
 	}
 
 	for (const auto& entry : AssetNamingValidator::AlternatePrefixes)
@@ -260,6 +259,8 @@ void UAssetNamingValidator::FindRequiredPrefixes(
 		{
 			return left.Len() > right.Len();
 		});
+
+	return true;
 }
 
 FString UAssetNamingValidator::FindBlueprintPrefix(const UBlueprint& blueprint) const

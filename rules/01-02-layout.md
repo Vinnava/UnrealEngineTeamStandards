@@ -87,6 +87,36 @@ Source/<Project>/
 - **If you patch the engine,** do it on a branch, wrap every change in `// <PROJECT>-BEGIN` /
   `// <PROJECT>-END` markers, record it in a written patch register, and upstream what you can.
 
+### 1.6 Prototype code
+
+> **Prototype code lives in its own module, is held only to the safety rules, and is rewritten - never
+> moved - when it graduates.**
+
+Planning first, `CONFLICT` blocks, naming, logging format and review discipline are right for
+production and heavy for finding out whether an idea is fun. This is where that overhead is waived, and
+the fence that stops the waiver spreading.
+
+- **One `<Project>Prototype` module, type `DeveloperTool`.** A `DeveloperTool` module is built for the
+  editor and for Debug and Development game builds, and left out of Test and Shipping - it is built
+  only where the target's `bBuildDeveloperTools` is true, which defaults to false for Test and Shipping
+  game targets. The Shipping binary cannot contain prototype code, because it is never compiled into it.
+- **The dependency points one way.** The prototype module may depend on the game module; nothing in
+  the game module ever depends on the prototype module, includes its headers or loads its classes.
+- **Prototype content lives in `TEMP/`** (8.2), which the cook already excludes (13.3).
+- **What still applies in the prototype module - the safety rules, because a crash in a prototype
+  still costs a day:** `UObject` lifetime and `UPROPERTY` pointers (3.8), `IsValid` (3.4), the game
+  thread (10.1), weak captures in lambdas (10.2), no `TAtomic` (10.8), no secrets in source (21.4),
+  and the encoding rules (5.5). From the 17.1 gate: build, PIE, reading assistant-written code,
+  `UObject` pointers, teardown, the game thread and authority.
+- **What is waived:** plan-first and `CONFLICT` blocks (14.1), naming (4), comments (5), logging format
+  and `LogTemp` (6), header order (3.1), Tick approval (3.7), tests (14.4), and the rest of the gate.
+  `tooling/check-project.py` applies the same split automatically.
+- **Graduating is a rewrite.** When a prototype earns a place in the game, it is written again in the
+  game module to the full standard, with the prototype as a reference, not a starting point. Code
+  copied out of the prototype module carries its waivers with it, and that is how they spread.
+- **A prototype older than a milestone is either graduated or deleted.** The module is for finding
+  out, not for keeping.
+
 ---
 
 ## 2. Content folder structure

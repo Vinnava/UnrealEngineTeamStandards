@@ -18,7 +18,11 @@ down; doing Tier 3 before Tier 1 is how a project ends up with perfect CI and no
 **Everything here is expensive or impossible to change later.** This is the minimum for any project
 that will outlive the prototype.
 
+- [ ] **The standard added as a submodule pinned to a release tag** (`v2.0.0`), never a branch - so
+      the project upgrades when it decides to (README, "Versioning")
 - [ ] Module split decided (`<Project>` / `<Project>Online`) - 1.1
+- [ ] A `<Project>Prototype` module of type `DeveloperTool`, so prototype code has a legitimate home
+      that never ships - 1.6
 - [ ] Source folder skeleton in place - 1.3
 - [ ] Content root `Content/_<Project>/` created, folder skeleton in place - 2.1
 - [ ] Project short name pinned, for class infixes and short variable names - 4.4, 4.8
@@ -47,8 +51,11 @@ retrofit.
       [`tooling/.clang-tidy`](../tooling/.clang-tidy) and
       [`tooling/.editorconfig`](../tooling/.editorconfig) copied to the project root, and a compile
       database generated - 3.10, 4.1
-- [ ] [`tooling/Validators/AssetNamingValidator`](../tooling/README.md) installed in the project's
-      editor module - 7.1-7.3
+- [ ] [`tooling/Validators/`](../tooling/README.md) installed in the project's editor module -
+      `AssetNamingValidator` and `AssetContentValidator` on their shared base, with the content root
+      and budgets set once in `DefaultEditor.ini` - 7.1-7.3, 23
+- [ ] [`tooling/check-project.py`](../tooling/check-project.py) in the every-commit CI tier, with
+      `--warn-only` until the backlog is cleared, then failing - 14.5, 18.4
 - [ ] [`tooling/project-template/PULL_REQUEST_TEMPLATE.md`](../tooling/project-template/PULL_REQUEST_TEMPLATE.md)
       copied to `.github/` - the rules no tool can check, sized like 17.1 rather than 17.2
 - [ ] Data-driven asset types registered as Primary Asset Types - 13.3

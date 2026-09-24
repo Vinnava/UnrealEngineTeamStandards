@@ -172,12 +172,72 @@ def check_index() -> None:
         if f"rules/{path.name}" not in readme:
             errors.append(f"README.md: rule file {path.name} is not listed in the index table")
 
-    version = re.search(r"\*\*Version (\d+\.\d+)\*\*", readme)
-    changelog = re.search(r"^\*\*(\d+\.\d+)\b", (ROOT / "CHANGELOG.md").read_text(encoding="utf-8"), re.M)
+    version = re.search(r"\*\*Version (\d+\.\d+(?:\.\d+)?)\*\*", readme)
+    changelog = re.search(r"^\*\*(\d+\.\d+(?:\.\d+)?)\b", (ROOT / "CHANGELOG.md").read_text(encoding="utf-8"), re.M)
     if not version or not changelog:
         errors.append("Could not read the version from README.md or CHANGELOG.md")
     elif version.group(1) != changelog.group(1):
         errors.append(f"README says version {version.group(1)}, changelog's newest entry is {changelog.group(1)}")
+
+    # The project template records the version it was written against. 1.8 shipped with it still
+    # saying 1.7, so a project copying it would have claimed an older standard than it imported.
+    template = ROOT / "tooling" / "project-template" / "CLAUDE.md"
+    pinned = re.search(r"Standard version: (\d+\.\d+(?:\.\d+)?)", template.read_text(encoding="utf-8"))
+    if not pinned:
+        errors.append("tooling/project-template/CLAUDE.md: no 'Standard version:' line")
+    elif version and pinned.group(1) != version.group(1):
+        errors.append(f"tooling/project-template/CLAUDE.md says standard version {pinned.group(1)}, "
+                      f"README says {version.group(1)}")
+
+
+def check_version_policy() -> None:
+    """From 2.0.0, a release that changes a rule's meaning is a major version (README, "Versioning").
+
+    A changelog bullet that changes meaning starts with "**Rule change:". This is the one release
+    rule a tool can hold: a reader pinned to 2.x must be able to trust that no 2.x release reversed a
+    rule under them.
+    """
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    headers = list(re.finditer(r"^\*\*(\d+)\.(\d+)(?:\.(\d+))? - [\d-]+\*\*", changelog, re.M))
+    for index, header in enumerate(headers[:-1]):
+        major = int(header.group(1))
+        if major < 2:
+            break                               # the 1.x history predates the policy
+        body = changelog[header.end():headers[index + 1].start()]
+        previous_major = int(headers[index + 1].group(1))
+        if "**Rule change:" in body and major == previous_major:
+            release = ".".join(g for g in header.groups() if g is not None)
+            errors.append(f"CHANGELOG.md: {release} changes a rule's meaning ('**Rule change:') but is not a "
+                          f"major version - it must be {previous_major + 1}.0.0")
+
+
+# The always-loaded import set (README, "Giving this to an AI assistant") is paid on every assistant
+# request. Growth past this budget is a decision to make on purpose, not something that drifts in.
+ALWAYS_LOADED_BUDGET_TOKENS = 22000
+CHARS_PER_TOKEN = 4                              # the usual English-prose estimate; used consistently
+
+
+def always_loaded_tokens() -> int | None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    bullet = re.search(r"\*\*Every project:\*\*(.*?)(?=\n- |\n\n)", readme, re.S)
+    if not bullet:
+        errors.append("README.md: no '**Every project:**' import list, so the always-loaded budget cannot be checked")
+        return None
+    total = 0
+    for name in re.findall(r"`([0-9][0-9][\w-]*)`", bullet.group(1)):
+        path = ROOT / "rules" / f"{name}.md"
+        if not path.exists():
+            errors.append(f"README.md: the always-loaded list names {name}, which is not a rule file")
+            continue
+        total += len(path.read_text(encoding="utf-8")) // CHARS_PER_TOKEN
+    return total
+
+
+def check_token_budget() -> None:
+    total = always_loaded_tokens()
+    if total is not None and total > ALWAYS_LOADED_BUDGET_TOKENS:
+        errors.append(f"always-loaded set is {total:,} tokens, over the {ALWAYS_LOADED_BUDGET_TOKENS:,} budget - "
+                      f"move material to an on-demand file, or raise the budget deliberately in check-standard.py")
 
 
 def rel(path: Path) -> str:
@@ -196,13 +256,17 @@ def main() -> int:
     check_checklist_citations()
     check_file_numbering()
     check_index()
+    check_version_policy()
+    check_token_budget()
 
     for warning in warnings:
         print(f"warning: {warning}")
     for error in errors:
         print(f"error: {error}")
 
+    tokens = always_loaded_tokens() or 0
     print(f"\n{len(sections)} sections, {len(markdown_files())} markdown files, "
+          f"always-loaded {tokens:,}/{ALWAYS_LOADED_BUDGET_TOKENS:,} tokens, "
           f"{len(errors)} errors, {len(warnings)} warnings")
     return 1 if errors else 0
 

@@ -1,4 +1,7 @@
-# The every-commit tier (14.5) for this repository. Both jobs fail the build; neither is advisory.
+# The every-commit tier (14.5) for this repository. Every job fails the build; none is advisory.
+# The in-engine validator harness (tooling/tests/validator-harness) needs an installed Unreal Engine,
+# which GitHub's runners do not have - it runs on a developer machine, after a validator change and on
+# every engine upgrade (22.2).
 name: standard
 
 on:
@@ -8,7 +11,7 @@ on:
 
 jobs:
   consistency:
-    name: Section references, links, encoding, index, version
+    name: References, links, encoding, numbering, versions, token budget
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +20,17 @@ jobs:
           python-version: '3.11'
       - name: check-standard.py
         run: python tooling/check-standard.py
+
+  tests:
+    name: Checker unit and mutation tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: unittest
+        run: python -m unittest discover -s tooling/tests -v
 
   formatting:
     name: Shipped C++ matches tooling/.clang-format
@@ -31,7 +45,4 @@ jobs:
       - name: Install clang-format 19
         run: pip install clang-format==19.1.5
       - name: Check formatting
-        run: |
-          clang-format --style=file:tooling/.clang-format \
-            --dry-run --Werror tooling/Validators/AssetNamingValidator.h \
-                               tooling/Validators/AssetNamingValidator.cpp
+        run: clang-format --style=file:tooling/.clang-format --dry-run --Werror tooling/Validators/*.h tooling/Validators/*.cpp

@@ -66,5 +66,8 @@ A few are **marked `[team-size]`**. Those need a team, a budget or dedicated har
 doing, and a solo project that skips them is not violating the standard - it is reading it correctly.
 Section 18 says when each one lands. A rule with no marker has no size exemption.
 
+**Prototype code** (1.6) is the one other exemption: code in the `<Project>Prototype` module is held
+only to the safety rules 1.6 lists, and is rewritten to the full standard when it graduates.
+
 Nothing here is aspirational. If a rule is wrong, or you cannot follow it, that is a defect in the
 standard: raise it (README, "Changing this standard"), do not quietly work around it.

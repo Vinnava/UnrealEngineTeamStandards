@@ -42,6 +42,10 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
 
 - **`DECLARE_MULTICAST_DELEGATE` is invisible to Blueprint.** Use the `DYNAMIC` form plus
   `UPROPERTY(BlueprintAssignable)` (9.3).
+- **An actor's label does not exist in a cooked build.** `AActor::GetActorLabel` is declared inside
+  `#if WITH_EDITOR`, so gameplay code that finds a placed actor by its label works in the editor and
+  fails to compile - or, behind a guard, silently finds nothing - in a packaged game. Find placed actors
+  by tag, GameplayTag or soft reference (23.3).
 - **GameplayTag hierarchy matching is strict** - `Level.Interior.Apartment` never satisfies
   `Level.Portal.Interior.Apartment`. Authored data uses the exact tag the runtime sends.
 - **`EditInstanceOnly` on a spawned actor can never be authored** - it stays at its constructor
@@ -137,3 +141,23 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
   strings. Verify every format string in PIE. *(real case)*
 - **`UMediaPlayer` needs a `UMediaSoundComponent` for audio** - attached to the owning
   `APlayerController` from the widget context, registered and activated **before `OpenSource()`**.
+- **A non-power-of-two texture never streams** - it sits in memory at full resolution for as long as
+  it is loaded. The editor no longer sets `NeverStream` on it, so the flag no longer tells you: the
+  refusal moved to runtime, in `UTexture::IsPossibleToStream`. Author powers of two, or set Power Of Two
+  Mode to pad (23.1). *(verified in 5.7 source, where the old rule looked out of date and was not)*
+
+### 16.9 Editor automation and validators
+
+Found by running this standard's own validators in a headless editor, which is how CI runs them.
+
+- **An automated import in a commandlet crashes on a Content Browser sync.** An import task sets
+  `bSyncToBrowser = false`, but the console variable `Interchange.FeatureFlags.Import.SyncToBrowser`
+  overrides it whenever it exists, and the sync asserts because a commandlet has no Slate application.
+  Set the variable to `0` before importing in any script that runs headless.
+- **A validator that accepts an asset must return a verdict.** Once `CanValidateAsset` returns true,
+  every path through `ValidateLoadedAsset` ends in `AssetPasses` or `AssetFails`; returning
+  `NotValidated` fires an engine `ensure` on every validation run, and `AssetWarning` alone does not
+  count as a verdict. Decide what to skip in `CanValidateAsset`, never with a late `NotValidated`.
+- **Validation also visits a Blueprint's generated class.** The `DataValidation` commandlet hands a
+  validator `BP_Door_C` as well as `BP_Door`. A validator about names or authored data skips `UClass`
+  objects in `CanValidateAsset`, or it reports every Blueprint twice.

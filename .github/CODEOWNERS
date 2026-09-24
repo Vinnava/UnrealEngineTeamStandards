@@ -1,0 +1,5 @@
+# The standard has one owner (README, "Ownership"). GitHub requests their review on every pull
+# request. With branch protection's "Require review from Code Owners" on, the review also blocks the
+# merge - turn that on once there is a second maintainer, since GitHub does not let an author approve
+# their own pull request.
+*   @Vinnava
