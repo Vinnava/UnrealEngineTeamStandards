@@ -250,14 +250,19 @@ Every subsystem:
 
 ### 9.14 Save data and versioning
 
-- **Mark saved fields `UPROPERTY(SaveGame)`** and serialise with `ArIsSaveGame = true`.
-- **A version field from day one**; the migration for a format change lands **in the same commit** as
-  the change.
-- **Migrations are sequential** (v1 to v2 to v3), never per-version branches. Keep every migration
-  forever.
+The full procedure is section 24. Load it before you change anything a save holds.
+
+- **A custom version from the day the save system is built** (24.3). Until the first external build
+  the format changes freely and saves are wiped; **from the first external build the version enum is
+  append-only** and a format change lands with its migration **in the same commit** (24.1).
+- **Migrations are sequential** (v1 to v2 to v3), never per-version branches, and run only from the
+  loader - never inside `Serialize` (24.5). Keep every migration forever.
+- **A save from a newer build is refused and never overwritten** (24.3).
+- **A `USaveGame` holds only what is saved.** `SaveGameToSlot` writes every `UPROPERTY` and ignores
+  the `SaveGame` flag, so runtime-only fields are `Transient` (16.3).
 - **Save identity and data** - a GameplayTag, an `FPrimaryAssetId`, a GUID - never a pointer.
-- **Save asynchronously.**
-- **Archive a save from every shipped version and load them all in CI** (14.5).
+- **Save and load asynchronously, through one subsystem** (24.3).
+- **A save from every external build is a fixture, loaded by a test on every commit** (24.6).
 
 ### 9.15 GAS and AI
 

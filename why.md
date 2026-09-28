@@ -389,7 +389,9 @@ worlds. Initialisation order left to luck changes between machines and builds.
 `SetMovementMode` from input is invisible to the server on a networked project.
 
 **9.14** Players skip versions, so migrations must chain. A saved pointer means nothing on the next
-load. A migration never run against a real old save is a hypothesis.
+load. A migration never run against a real old save is a hypothesis. Until 3.0.0 this said a
+migration lands with its format change from day one; section 24 explains why the contract now starts
+at the first external build.
 
 **9.15** GAS has a steep ramp and a large commitment; the middle path keeps the option open.
 
@@ -845,3 +847,58 @@ The texture and mesh budgets are **configured, not fixed** - 4096 and 1000 are d
 limits - because the right number depends on the target platform, and a hard-coded budget is either
 too loose for mobile or too tight for PC. What is not configurable is that the budget exists and
 fails the build.
+
+---
+
+## 24. Save data and versioning
+
+A save file is the one piece of this game that a player keeps across builds you have already
+replaced. Everything else - code, content, config - is overwritten on update; the save is read by a
+build that did not write it. So a save format is an interface with a party who cannot be asked to
+upgrade, and the version stamped in it is the only thing that tells the reading build what it is
+looking at.
+
+**Why the contract starts at the first external build (24.1).** Until 3.0.0, 9.14 required a
+migration for every format change from day one. During internal development that is pure cost: the
+only saves that exist are the team's, the format changes weekly, and each change would carry a
+migration that no player will ever run - which also turns the enum into history of experiments. The
+risk the rule was protecting against is a save on a machine you cannot wipe, and that first exists
+the day a build leaves the team. Before then, wiping saves is cheaper and more honest than migrating
+them. What does not wait is the scaffolding: adding a custom version to a format that has already
+shipped leaves every earlier save reading as -1, which works (16.3) but is one more case to test.
+
+**Why a custom version, not a version field.** A `UPROPERTY` version number is written and read like
+any other field, so it cannot tell the reader how to read the fields *before* it, and a raw
+`Serialize` cannot branch on it at all. A custom version lives in the save header, is known before a
+single property is read, and is what the engine's own formats use.
+
+**Why migrations run from the loader, not `Serialize` (24.5).** The guide this section was drafted
+from said `Serialize` also runs for duplication, so a migration there would run twice. The harness
+disproved the mechanism: a loading archive that was never given versions reports every registered
+one at its latest, so a duplicate reads as current and its migrations are skipped. The rule stays,
+for the reasons that survive: one call site, testable on its own, and after the newer-build refusal,
+so nothing migrates a save this build must not touch. The real duplication hazard is the reverse -
+a copy taken before migration claims to be current forever (16.3) - and it is why only the loader
+ever holds an unmigrated save.
+
+**Why the GUID never changes (24.5).** It is not tidiness. Every existing save stops matching, reads
+as -1, and every migration runs again on data that was already current - the harness turns 0.5 health
+into 0.005 this way.
+
+**Why the loader refuses a newer save and remembers the slot (24.3).** Staggered platform rollouts,
+store rollbacks and a player reinstalling an old build all put a newer save in front of an older
+build. Loading it gives wrong values; saving over it destroys progress the player has already made.
+Refusing is recoverable - the player updates - and neither alternative is.
+
+**Why the scaffolding is compiled and run in this repository.** The guide this section was drafted
+from was never run, and running it corrected it four times: `SaveGameToSlot` ignores the `SaveGame`
+flag the old 9.14 relied on; a pre-versioning save reads as -1, not as `BeforeCustomVersionWasAdded`;
+a changed GUID re-runs every migration rather than skipping them; and duplication does not re-run
+migrations. The first draft of this release got the last one wrong in the other direction - it added
+a guard against a -1 that never happens - and only the harness caught it. It keeps all of these true
+on every engine upgrade (22.2).
+
+Keeping the GUID's definition and its registration in one translation unit is defensive: every
+`Serialize` references the GUID, so the object that registers it cannot be left out of a link. This
+has not been tested in a monolithic build.
+

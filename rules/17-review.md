@@ -126,6 +126,16 @@ when you are new and building the habit. Items marked **[tool]** are already enf
       `.clang-tidy` partially)
 - [ ] Tested with two clients, and once as a dedicated server rather than only a listen server (11.7)
 
+**Save data** (if anything persists on the device)
+
+- [ ] A format change that needs a bump has one; one that does not, does not (24.2)
+- [ ] Exactly one entry appended above the marker; nothing reordered, removed or inserted; the GUID
+      unchanged (24.4, 24.5)
+- [ ] Legacy properties keep their original names; unmapped data is kept and logged as `Error` (24.4)
+- [ ] The migration is its own function, called from `ApplyMigrations` in enum order - never from
+      `Serialize` (24.4, 24.5)
+- [ ] A new fixture is committed if this build goes outside the team (24.6)
+
 **Performance**
 
 - [ ] A new subsystem has its CPU scope, counters, CSV stat and LLM tag (13.6)

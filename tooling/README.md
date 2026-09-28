@@ -13,7 +13,7 @@ instead of by memory. Copy them into a project. If a project needs a change, cha
 | `Validators/ProjectValidatorBase.h` / `.cpp` | The project's editor module | The shared base: owns the one content-root setting both validators read. |
 | `Validators/AssetNamingValidator.h` / `.cpp` | The project's editor module | Asset prefixes (7.1), core-framework role prefixes (7.2), and PascalCase names with no spaces (7.3) - on save, from Validate Data, and in CI. |
 | `Validators/AssetContentValidator.h` / `.cpp` | The project's editor module | Textures that cannot stream or break the size budget, and heavy non-Nanite meshes with no LODs (23.1, 23.2). |
-| `tests/` | Stays here | Unit and mutation tests for both checkers, and the in-engine validator harness. |
+| `tests/` | Stays here | Unit and mutation tests for both checkers, the in-engine validator harness, and the save versioning harness (24). |
 | `project-template/CLAUDE.md` | Project root | The rule-file imports, the project's pinned decisions, and **the override table** (00-core). The file an assistant actually reads. |
 | `project-template/.gitattributes` | Project root, before the first asset | Git LFS with `lockable`, without which `git lfs lock` in 14.3 does not work. |
 | `project-template/PULL_REQUEST_TEMPLATE.md` | The project's `.github/` | The rules no tool can check (18.2), sized like 17.1 rather than 17.2. |
@@ -204,6 +204,32 @@ no verdict.
 Written against the UE 5.7 `UEditorValidatorBase` API. The class-name table uses asset class names
 rather than types, so it links nothing beyond `Engine` and `DataValidation`. GAS classes are matched
 by name for the same reason.
+
+## Proving the save versioning works
+
+```
+powershell -ExecutionPolicy Bypass -File tooling\tests\save-version-harness\run-save-version-test.ps1
+```
+
+Run it after changing section 24 or its code, and on every engine upgrade (22.2). Same parameters as
+the validator harness. One scratch project is rebuilt as successive builds of a game, and its
+`Saved/SaveGames` folder carries over between them the way a player's does:
+
+1. **a build from before versioning** writes a save - and the `SaveGame`-flag and `Transient` facts
+   in 16.3 are checked on it;
+2. **the 24.3 scaffolding lands**: the old save reads as -1 and still loads, and a format-0 save is
+   written;
+3. **one version is appended**: both older saves migrate exactly once, a second migration changes
+   nothing, a fresh save is never migrated, duplicates behave as 16.3 says, and a format-1 save is
+   written;
+4. **the build is rolled back**: the format-1 save is refused, the loader will not overwrite it, and
+   its bytes are unchanged;
+5. **two forbidden mistakes are built on purpose** - a regenerated GUID, and `CustomVer` without
+   `UsingCustomVersion` - and each must do the damage 24.5 predicts.
+
+The code under `Source/SaveCheck/Save/` is the 24.3 scaffolding in full; the `SAVE_CHECK_` lines are
+the only harness additions. A commandlet has no engine loop, so the harness ticks
+`FTSTicker::GetCoreTicker()` itself - the save system delivers async completions through it (24.6).
 
 ## Blueprint lint
 

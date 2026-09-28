@@ -1,7 +1,7 @@
 # The every-commit tier (14.5) for this repository. Every job fails the build; none is advisory.
-# The in-engine validator harness (tooling/tests/validator-harness) needs an installed Unreal Engine,
-# which GitHub's runners do not have - it runs on a developer machine, after a validator change and on
-# every engine upgrade (22.2).
+# The in-engine harnesses (tooling/tests/validator-harness, tooling/tests/save-version-harness) need an
+# installed Unreal Engine, which GitHub's runners do not have - they run on a developer machine, after
+# a change to what they cover and on every engine upgrade (22.2).
 name: standard
 
 on:

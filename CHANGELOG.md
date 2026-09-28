@@ -1,5 +1,42 @@
 # Changelog
 
+**3.0.0 - 2026-09-29**
+
+**Save data gets its own section, and the save rules in 9.14 change.** A major version because two
+rules change meaning; everything else here is new.
+
+- **Rule change: the save-migration contract starts at the first external build** (9.14, 24.1). 9.14
+  required a migration for every format change from day one. Now the scaffolding lands with the save
+  system, the format changes freely during internal development with local saves wiped, and from the
+  first build that leaves the team the version enum is append-only and each format change lands with
+  its migration in the same commit.
+- **Rule change: a `USaveGame` holds only what is saved** (9.14). The old rule said to mark saved
+  fields `UPROPERTY(SaveGame)`, but `SaveGameToSlot` never sets `ArIsSaveGame`, so the flag did
+  nothing and every `UPROPERTY` was written. Runtime-only fields are now `Transient`, which the engine
+  does skip - verified by running it.
+- **Rule change: save fixtures load on every commit** (14.5, 24.6), not weekly, and there is one from
+  every external build rather than every shipped version. They are a few kilobytes each; a week is
+  too long to learn a migration broke.
+- **New section 24, [Save data and versioning](rules/24-save-data.md)**: when the contract starts,
+  when a change needs a version, the scaffolding (a custom version, a save object that records it,
+  one loader that refuses a newer build's save and never overwrites it), the procedure for adding a
+  version, the always-and-never list, fixtures, and a symptom table. On demand, not always loaded;
+  9.14 is the always-loaded summary and grew by a few lines.
+- **New traps in 16.3**: `SaveGameToSlot` ignores the `SaveGame` flag; a pre-versioning save reads
+  its custom version as -1, not 0; `CustomVer` without `UsingCustomVersion` fails a `check` on save
+  only; a duplicate of a save reads as `LatestVersion`, so one taken before migration is never
+  migrated.
+- **4.5** names the one exception to `enum class`: a serialisation version enum, which archives
+  compare as `int32`.
+- **17.2** gains a Save data group; **18.2** asks for the scaffolding before the first external
+  build; **22.2** gains five rows for the save engine claims.
+- **New [`tooling/tests/save-version-harness/`](tooling/tests/save-version-harness/)**: builds one
+  game four times - before versioning, with the scaffolding, with one version appended, and rolled
+  back - carrying the save folder between builds as a player's machine does, then builds two
+  forbidden mistakes and checks each does the damage section 24 predicts. It corrected the guide
+  section 24 was drafted from: a regenerated GUID re-runs every migration rather than skipping them,
+  and duplication does not re-run migrations - a duplicate reads as current.
+
 **2.0.1 - 2026-09-25**
 
 - **1.1 says modules are created on demand.** Only `<Project>` is required; the online, editor and

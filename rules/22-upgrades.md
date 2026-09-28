@@ -43,6 +43,11 @@ upgrade, not a suggestion.
 | `AActor::GetActorLabel` is editor-only | 16.3, 23.3 | The `#if WITH_EDITOR` block around it in `Actor.h` |
 | A validator returning `NotValidated` after accepting an asset fires an ensure | 16.9, tooling | `UEditorValidatorBase::ValidateLoadedAsset` in `EditorValidatorBase.cpp` |
 | `Interchange.FeatureFlags.Import.SyncToBrowser` overrides an import task's `bSyncToBrowser` | 16.9 | `ImportAssetsInternal` in `AssetTools.cpp` |
+| `SaveGameToSlot` never sets `ArIsSaveGame`; `Transient` is still skipped | 9.14, 16.3 | `UGameplayStatics::SaveGameToMemory` in `GameplayStatics.cpp` - then re-run `tooling/tests/save-version-harness/` |
+| The save header stores the custom versions registered at save time; `CustomVer` returns -1 for a missing GUID and checks on a save | 16.3, 24.3 | `FSaveGameHeader` in `GameplayStatics.cpp`; `FArchiveState::CustomVer` in `Archive.cpp` |
+| A loading archive with no versions set reports every registered version at its latest | 16.3, 24.3 | `FArchiveState::GetCustomVersions` in `Archive.cpp` - the harness's duplicate checks |
+| Tagged serialisation converts a saved number to a wider numeric property | 24.2 | `TProperty_Numeric::ConvertFromType` in `UObject/UnrealType.h` |
+| Async save and load completions arrive through `FTSTicker::GetCoreTicker()` | 24.6 | `ISaveGameSystem::OnAsyncComplete` in `SaveGameSystem.cpp` |
 | `GlobalConfig` loads from the declaring base class's section | tooling | `CPF_GlobalConfig` in `ObjectMacros.h` - then re-run the validator test in `tooling/README.md` |
 | Editor validator API shape | 18, tooling | `EditorValidatorBase.h` - the virtual signatures move between versions |
 | Every trap in section 16 | 16 | Re-test the ones the project relies on; a fixed trap is worth deleting |

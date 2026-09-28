@@ -18,7 +18,7 @@ down; doing Tier 3 before Tier 1 is how a project ends up with perfect CI and no
 **Everything here is expensive or impossible to change later.** This is the minimum for any project
 that will outlive the prototype.
 
-- [ ] **The standard added as a submodule pinned to a release tag** (`v2.0.1`), never a branch - so
+- [ ] **The standard added as a submodule pinned to a release tag** (`v3.0.0`), never a branch - so
       the project upgrades when it decides to (README, "Versioning")
 - [ ] The `<Project>` game module in place. The online, editor and prototype modules are created
       the day each is first needed, not now - 1.1
@@ -68,6 +68,9 @@ retrofit.
 - [ ] Accessibility decisions made before the first screen is built - subtitles, remapping, colour
       channel, text scale - 20.1
 - [ ] Audio concurrency groups and the voice budget established - 19.3, 19.9
+- [ ] If anything persists on the device: the save version scaffolding and the one loader in place
+      before the first external build, and a fixture from every external build loaded on every
+      commit - 24.1, 24.3, 24.6
 - [ ] If the project talks to a backend: the wire boundary, the retry policy and where tokens live -
       21.1, 21.2, 21.4
 - [ ] The rules no tool can check - header order, comment content, the pillars - listed in the pull
@@ -84,7 +87,6 @@ For a team large enough that review alone stops working.
       budget - set budgets just above today's values and ratchet them down - 13.3
 - [ ] Nightly and weekly CI tiers: cook, package, dedicated server, perf and memory gates - 14.5
 - [ ] A deterministic performance regression gate on dedicated hardware - 13.9
-- [ ] A save archived from every shipped version, loaded in CI - 9.14
 - [ ] Engine upgrade cadence agreed and an owner named - 22.1
 - [ ] Per-platform cert requirement lists, each with an owner - 20.9
 
