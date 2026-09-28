@@ -69,6 +69,18 @@ Entries marked *(real case)* are incidents this team shipped; the incident is to
   Test "is anything assigned" with `!IsNull()`, then load asynchronously (10.3) - or, in editor tools
   and behind loading screens only, `LoadSynchronous` and null-check. Reserve `IsValid()` for "is it
   already resident". *(real case)*
+- **`SaveGameToSlot` ignores the `SaveGame` property flag.** `UGameplayStatics::SaveGameToMemory`
+  never sets `ArIsSaveGame`, so every `UPROPERTY` on a `USaveGame` is written; only `Transient` keeps
+  one out. The flag matters only in an archive you build yourself with `ArIsSaveGame = true` (9.14).
+- **A save written before a custom version was registered reads that version as -1, not 0.** The
+  save header stores the versions registered when it was written, and `CustomVer` returns -1 for a
+  GUID it does not hold. `BeforeCustomVersionWasAdded` is never what an old save reports (24.3).
+- **`CustomVer` on a save archive without `UsingCustomVersion` first fails a `check`.** A loading
+  archive is exempt, so the mistake survives every load test and dies on the first save.
+- **A loading archive that was never given versions reports every registered one at its latest.**
+  So `DuplicateObject` and any other in-memory copy of a save read as `LatestVersion`: a copy of a
+  migrated save is correct, but a copy taken *before* migration claims to be current and is never
+  migrated. Only the loader touches an unmigrated save (24.3).
 - **A wire enum whose zero value is a real state makes its own fallback unreachable** - `TryGetField`
   and friends leave the output untouched on a miss. Reserve enumerator 0 as `Unknown`, with a
   derivation that never invents an accusatory state.

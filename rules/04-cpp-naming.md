@@ -139,6 +139,8 @@ enum class ECallOutcome : uint8
   - **Behaviour enum** - 0 is the safe, inert case.
   - **Player-facing outcome enum** - 0 is never the accusatory or failure state.
 - **Never use a `UENUM` as a `UPROPERTY TMap` key** (section 16).
+- **The one exception: a serialisation version** is Epic's `struct F<Name>Version { enum Type }`,
+  because archives report versions as `int32` (24.3).
 
 ### 4.6 Structs
 

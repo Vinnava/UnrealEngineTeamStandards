@@ -1,0 +1,13 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.7",
+	"Category": "",
+	"Description": "Scratch project that proves the save versioning in standard section 24 across successive builds",
+	"Modules": [
+		{
+			"Name": "SaveCheck",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

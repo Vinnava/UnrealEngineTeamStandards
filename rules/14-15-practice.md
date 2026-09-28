@@ -84,9 +84,9 @@ Every gate fails the build.
 
 | Tier | Time | Contents |
 |---|---|---|
-| Every commit | ~10 min | Compile (editor and game), automation tests, asset validators (18), reference budget check, documentation consistency (`tooling/check-standard.py`) |
+| Every commit | ~10 min | Compile (editor and game), automation tests - every save fixture included (24.6) - asset validators (18), reference budget check, documentation consistency (`tooling/check-standard.py`) |
 | Nightly | 1-2 h | Cook and package, dedicated server build, perf and memory against budget (13.9), functional tests |
-| Weekly | Longer | Test and Shipping builds on every platform, a full clean cook, loading archived saves from every shipped version (9.14) |
+| Weekly | Longer | Test and Shipping builds on every platform, a full clean cook |
 
 - **Commandlets in CI return non-zero on failure** and never prompt, open a dialog or wait for input -
   run them with `-unattended -nopause -nosplash`.
