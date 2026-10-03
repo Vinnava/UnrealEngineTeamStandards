@@ -18,7 +18,7 @@ down; doing Tier 3 before Tier 1 is how a project ends up with perfect CI and no
 **Everything here is expensive or impossible to change later.** This is the minimum for any project
 that will outlive the prototype.
 
-- [ ] **The standard added as a submodule pinned to a release tag** (`v3.1.0`), never a branch - so
+- [ ] **The standard added as a submodule pinned to a release tag** (`v3.2.0`), never a branch - so
       the project upgrades when it decides to (README, "Versioning")
 - [ ] The `<Project>` game module in place. The online, editor and prototype modules are created
       the day each is first needed, not now - 1.1

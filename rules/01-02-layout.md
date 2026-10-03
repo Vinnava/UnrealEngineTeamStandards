@@ -57,13 +57,23 @@ Source/<Project>/
   Data/
     DataAsset/           typed UDataAsset subclasses
     DataTypes/           shared structs and enums, no behaviour
-  GameInstance/
-    Subsystem/           the service layer
+  GameInstance/          the UGameInstance subclass
   GameMode/
   Interface/             C++ interfaces
   Save/                  SaveGame classes
+  Subsystem/             the service layer, one folder per scope (9.12)
+    GameInstance/
+    World/
+    LocalPlayer/
+    Engine/
   UI/                    all UMG C++ base classes
 ```
+
+- **Every subsystem lives in `Subsystem/<Scope>/`**, the scope named after its base class without
+  `U` and `Subsystem` - `UGameInstanceSubsystem` in `GameInstance/`, `UWorldSubsystem` and
+  `UTickableWorldSubsystem` in `World/`, `ULocalPlayerSubsystem` in `LocalPlayer/`. The folder
+  states the lifetime, so a reader knows when a service dies before opening it.
+- **Scope folders are created with their first subsystem**, like modules (1.1).
 
 **If you cannot tell which folder a new class belongs in, the class is doing two jobs.** Split it.
 

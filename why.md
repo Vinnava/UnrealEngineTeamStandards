@@ -85,7 +85,10 @@ creating it early.
 The one-line comment is what makes pruning possible later.
 
 **1.3 Source folder layout.** A reader should be able to guess where a class lives from what it
-*is*. When nobody can decide where a class goes, the class is usually doing two jobs.
+*is*. When nobody can decide where a class goes, the class is usually doing two jobs. Subsystems
+share one `Subsystem/` root because they share one role, the service layer; the scope folder under
+it carries the one fact that differs between them and causes bugs when missed - how long the service
+lives (9.12).
 
 **1.4 Compile-time gating.** An editor module is stripped by the cook as a whole, so editor code in it
 can never leak into a shipped build. `#if WITH_EDITOR` blocks scattered through a game module rely on

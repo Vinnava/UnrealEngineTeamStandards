@@ -1,5 +1,15 @@
 # Changelog
 
+**3.2.0 - 2026-10-03**
+
+- **1.3 gives every subsystem one home: `Subsystem/<Scope>/`** - `GameInstance/`, `World/`,
+  `LocalPlayer/`, `Engine/`, named after the base class. 1.3 placed only GameInstance subsystems,
+  under `GameInstance/Subsystem/`, so a World or LocalPlayer subsystem had no folder and ZWS wrote an
+  override to place its UI layer subsystem. The `GameInstance/` folder now holds only the
+  `UGameInstance` subclass. Minor, not major: it moves the GameInstance subsystem folder, but no
+  adopter has a GameInstance subsystem - ZRK has no subsystems and ZWS already uses this layout - so
+  nothing has to move. 9.12 points to the folder rule.
+
 **3.1.0 - 2026-10-03**
 
 - **14.3 sets the commit body format**: a `*` bullet list after a blank line - one short line each

@@ -232,6 +232,8 @@ Every subsystem:
 
 **A subsystem is a service, not a bag.** If you cannot state its job in one sentence, split it.
 
+Its files live in `Subsystem/<Scope>/` (1.3).
+
 ### 9.13 Input
 
 - **An input action names the intent, never the key** - `IA_Interact`, not `IA_PressE`.
