@@ -53,7 +53,7 @@ is in [why.md](../why.md).
 - **Lock a `.uasset` or `.umap` before you edit it** (`git lfs lock`, or the editor's source-control
   integration).
 - **Fix up redirectors after a move or rename** (right-click the folder > Fix Up Redirectors) and commit
-  the fix-up with the move.
+  the fix-up with the move. The naming validator warns on every redirector it finds until you do.
 - **Never commit** `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` or `.vs/`.
 - **Git + LFS with locking for a small, engineering-led team; Perforce with exclusive checkout for a
   team with artists editing daily.** Decide in the README. Keep feature branches short.

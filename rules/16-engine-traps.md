@@ -173,3 +173,8 @@ Found by running this standard's own validators in a headless editor, which is h
 - **Validation also visits a Blueprint's generated class.** The `DataValidation` commandlet hands a
   validator `BP_Door_C` as well as `BP_Door`. A validator about names or authored data skips `UClass`
   objects in `CanValidateAsset`, or it reports every Blueprint twice.
+- **Validation also visits redirectors.** A rename or move leaves a `UObjectRedirector` under the old
+  name whenever a referencer is not resaved - a map, or a file under source control that is not checked
+  out - and Replace References always leaves one. The commandlet validates it like any asset. It keeps
+  the old name, so no prefix rule fits it; a naming validator reports it as an unfixed rename (14.3),
+  not as a type missing from its table.

@@ -1,5 +1,15 @@
 # Changelog
 
+**3.2.1 - 2026-10-03**
+
+- **The naming validator warns on a redirector instead of asking for a prefix row.** A rename that
+  leaves a redirector behind made it warn "'IMC_Default' is a 'ObjectRedirector', which has no prefix
+  rule yet - add a row" (found in ZWS). No row can fit: a redirector keeps the old asset's name. It
+  now warns that the asset is a redirector and to Fix Up Redirectors (14.3), and still passes, so a
+  commit is not blocked. The validator does not fix it up itself - that resaves other assets, which a
+  check must never do. 16.9 records the trap; the harness now leaves a real redirector and checks the
+  warning. Patch: a tooling fix, no rule changes meaning.
+
 **3.2.0 - 2026-10-03**
 
 - **1.3 gives every subsystem one home: `Subsystem/<Scope>/`** - `GameInstance/`, `World/`,

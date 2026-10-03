@@ -10,7 +10,8 @@
       2. creates assets built to pass, to fail, or to warn (make_assets.py);
       3. runs the DataValidation commandlet - the same command CI runs - and checks every finding,
          the absence of engine ensures, and the exit code;
-      4. deletes the failing assets, validates again, and checks that a warning alone exits 0.
+      4. deletes the failing assets, validates again, and checks that warnings alone - an unmapped type
+         and a redirector - exit 0.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tooling\tests\validator-harness\run-validator-test.ps1
@@ -61,7 +62,8 @@ Step "Creating test assets"
 & $editor $project -run=pythonscript "-script=$(Join-Path $WorkDir 'make_assets.py')" @headless *> (Join-Path $WorkDir "make.log")
 Check ($LASTEXITCODE -eq 0) "the asset script runs"
 $created = @(Get-ChildItem (Join-Path $WorkDir "Content\_Test\*.uasset") -ErrorAction SilentlyContinue).Count
-Check ($created -eq 11) "11 test assets created under the content root (found $created)"
+Check ($created -eq 13) "13 test assets created under the content root (found $created)"
+Check ((Test-Path (Join-Path $WorkDir "Content\_Test\M_OldBase.uasset")) -and (Test-Path (Join-Path $WorkDir "Content\_Test\M_Base.uasset"))) "consolidating left a redirector behind"
 
 Step "Validating everything - the command CI runs"
 $log = Join-Path $WorkDir "validate-all.log"
@@ -75,6 +77,7 @@ $expected = [ordered]@{
     "T_Big is over the configured budget"     = "'T_Big' is 1024x1024, over the 512 budget"
     "SM_Sphere has no LODs"                   = "'SM_Sphere' has 960 triangles, one LOD, and Nanite off"
     "an unmapped type warns"                  = "'Unmapped' is a 'SubsurfaceProfile', which has no prefix rule yet"
+    "a redirector warns with the 14.3 fix"    = "'M_OldBase' is a redirector left by a rename or move"
 }
 foreach ($case in $expected.GetEnumerator()) {
     Check ([bool]($found | Where-Object { $_ -like "*$($case.Value)*" })) $case.Key
@@ -84,6 +87,7 @@ Check ($errors -eq 5) "exactly 5 errors, no false positives (found $errors)"
 Check (-not ($found | Where-Object { $_ -match "BP_whatever" })) "nothing outside the content root is checked"
 Check (-not ($found | Where-Object { $_ -match "MacroHelpers" })) "a macro library passes - 7.1 gives it no prefix"
 Check (-not ($found | Where-Object { $_ -match "_C'" })) "a Blueprint's generated class is not reported twice (16.9)"
+Check (-not ($found | Where-Object { $_ -match "ObjectRedirector" })) "a redirector is not reported as a missing prefix rule"
 Check (-not (Select-String -Path $log -Pattern "Ensure condition|did not return a validation result" -Quiet)) "no engine ensure - every accepted asset gets a verdict (16.9)"
 
 Step "Validating with the failing assets removed"
@@ -95,7 +99,8 @@ $log = Join-Path $WorkDir "validate-good.log"
 Check ($LASTEXITCODE -eq 0) "a warning alone does not fail CI"
 $found = Findings $log
 Check (-not ($found | Where-Object { $_ -match 'Error:' })) "no errors on the passing assets"
-Check ([bool]($found | Where-Object { $_ -match "no prefix rule yet" })) "the warning is still reported"
+Check ([bool]($found | Where-Object { $_ -match "no prefix rule yet" })) "the unmapped-type warning is still reported"
+Check ([bool]($found | Where-Object { $_ -match "is a redirector" })) "the redirector warning is still reported"
 
 if ($failures.Count) {
     Write-Host "`n$($failures.Count) check(s) failed. Logs are in $WorkDir" -ForegroundColor Red

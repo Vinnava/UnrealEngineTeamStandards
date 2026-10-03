@@ -38,7 +38,7 @@ lives elsewhere.
 
 **Record which version** (the README header) so a reader can tell whether a rule has moved on:
 
-> Standard version: 3.2.0
+> Standard version: 3.2.1
 
 ## This project
 

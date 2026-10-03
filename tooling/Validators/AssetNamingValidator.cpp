@@ -4,6 +4,7 @@
 #include "Engine/Blueprint.h"
 #include "Engine/DataAsset.h"
 #include "Misc/DataValidation.h"
+#include "UObject/ObjectRedirector.h"
 
 #define LOCTEXT_NAMESPACE "AssetNamingValidator"
 
@@ -129,6 +130,19 @@ EDataValidationResult UAssetNamingValidator::ValidateLoadedAsset_Implementation(
 	const FAssetData& assetData, UObject* asset, FDataValidationContext& context)
 {
 	const FString assetName = assetData.AssetName.ToString();
+
+	// A redirector keeps the old asset's name, so no prefix rule fits it. Name the real problem - an
+	// unfixed rename - and pass, so the commit is not blocked by a stub the fix-up deletes (14.3)
+	if (asset->IsA<UObjectRedirector>())
+	{
+		const FText message = FText::Format(
+			LOCTEXT("Redirector", "'{0}' is a redirector left by a rename or move - right-click its folder > Fix Up "
+								  "Redirectors and commit the fix-up with the move (standard 14.3)."),
+			FText::AsCultureInvariant(assetName));
+		AssetWarning(asset, message);
+		AssetPasses(asset);
+		return EDataValidationResult::Valid;
+	}
 
 	if (assetName.Contains(TEXT(" ")))
 	{

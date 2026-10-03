@@ -67,3 +67,20 @@ library.duplicate_asset("/Engine/BasicShapes/Cube", f"{ROOT}/SM_Cube")       # p
 
 library.save_directory(ROOT)
 library.save_directory(OUTSIDE)
+
+
+def leave_redirector(old_name, new_name):
+    """Leaves a redirector the way Replace References does: consolidating one asset into another
+    deletes it and puts a redirector in its package, under its old name.
+
+    A rename leaves one only when a referencer cannot be resaved; with no source control here, a
+    rename past a read-only referencer was tried and left none, so it cannot force one.
+    """
+    old = tools.create_asset(old_name, ROOT, unreal.Material, unreal.MaterialFactoryNew())
+    new = tools.create_asset(new_name, ROOT, unreal.Material, unreal.MaterialFactoryNew())
+    library.consolidate_assets(new, [old])
+    library.save_directory(ROOT)
+
+
+# Redirector (14.3)
+leave_redirector("M_OldBase", "M_Base")                  # WARNING: M_OldBase is a redirector; M_Base passes

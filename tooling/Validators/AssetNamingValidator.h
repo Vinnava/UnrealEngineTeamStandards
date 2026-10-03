@@ -27,7 +27,7 @@ protected: // Functions
 	virtual bool CanValidateAsset_Implementation(
 		const FAssetData& assetData, UObject* object, FDataValidationContext& context) const override;
 
-	/** Fails the asset on a space, a missing or wrong prefix, or a non-PascalCase name after it */
+	/** Fails the asset on a space, a missing or wrong prefix, or a non-PascalCase name after it; warns on a redirector */
 	virtual EDataValidationResult ValidateLoadedAsset_Implementation(
 		const FAssetData& assetData, UObject* asset, FDataValidationContext& context) override;
 };

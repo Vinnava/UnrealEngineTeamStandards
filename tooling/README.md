@@ -172,7 +172,8 @@ type never blocks a commit but the table grows instead of quietly ageing. Textur
 `HDRI_` (7.1). Core-framework Blueprints are matched by parent class and must carry their 7.2 role
 prefix, so a GameMode Blueprint named `BP_Main` fails and `BP_GM_Main` passes - with `BP_TEMP_` /
 `WBP_TEMP_` accepted whatever the parent (8.2). A Blueprint's generated class (`BP_Door_C`) is
-skipped; the Blueprint carries the name.
+skipped; the Blueprint carries the name. A redirector left by a rename **passes with a warning**
+telling you to Fix Up Redirectors (14.3) - it keeps the old name, so it is never prefix-checked.
 
 **Writing another validator:** once `CanValidateAsset` accepts an asset, every path through
 `ValidateLoadedAsset` must end in `AssetPasses` or `AssetFails`. Returning `NotValidated` fires an
@@ -190,11 +191,12 @@ engine (`-EngineRoot`, default `C:\Program Files\Epic Games\UE_5.7`). It:
 
 1. **compiles the validators** in a scratch project with no PCH and no unity build - so a missing
    include cannot hide behind a shared PCH - and fails on any warning in them;
-2. **creates eleven assets** in a headless editor, each built to pass, fail or warn on one rule;
+2. **creates fourteen assets** in a headless editor, each built to pass, fail or warn on one rule -
+   including a redirector, left by consolidating one material into another (Replace References);
 3. **runs the `DataValidation` commandlet** - the command CI runs - and checks each of the five
-   expected errors and the one warning, that nothing outside the content root is checked, that no
+   expected errors and the two warnings, that nothing outside the content root is checked, that no
    generated class is reported twice, and that no engine `ensure` fires;
-4. **removes the failing assets and validates again**, checking that a warning alone exits 0.
+4. **removes the failing assets and validates again**, checking that warnings alone exit 0.
 
 It exits 0 only if every check passes. It was built by doing all of this by hand first, and that
 first run found three real bugs that compiling never could: a `NotValidated` path that had fired an
