@@ -17,7 +17,7 @@ rather than impressions.
       should decide by vote rather than inherit. Do not reopen it during the pilot.
 - [ ] **Name the art lead and the design lead who will extend section 23.** It covers only what is
       verified in engine source; their workflows are the rest of it.
-- [ ] **Add the standard as a submodule pinned to `v3.0.0`**, and create the project `CLAUDE.md` from
+- [ ] **Add the standard as a submodule pinned to `v3.1.0`**, and create the project `CLAUDE.md` from
       [`tooling/project-template/`](tooling/project-template/).
 - [ ] **Install the validators in the project's editor module** and confirm they load. They are
       proven to compile and to catch what they claim in a scratch project on 5.7
@@ -59,8 +59,8 @@ For every section, decide one of **keep, change or delete**, and record the reas
 - **A gate item skipped repeatedly is cut from the gate or turned into a tool** (17.4).
 - **Section 23 absorbs what the art and design leads wrote.**
 
-The retro's changes ship as **2.1.0** if no rule changes meaning, or **3.0.0** if any does
-(README, "Versioning").
+The retro's changes ship as the next minor version if no rule changes meaning, or the next major if
+any does (README, "Versioning").
 
 ## The standard is proven when
 

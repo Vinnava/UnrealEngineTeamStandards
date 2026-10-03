@@ -1,5 +1,13 @@
 # Changelog
 
+**3.1.0 - 2026-10-03**
+
+- **14.3 sets the commit body format**: a `*` bullet list after a blank line - one short line each
+  for what changed, why when not obvious, and what was tested. No prose paragraphs; a one-line change
+  needs no body. The title rule is unchanged: a system prefix and an imperative summary under 72
+  characters. Minor, not major: the body format was unspecified before, and nothing already required
+  changes.
+
 **3.0.0 - 2026-09-29**
 
 **Save data gets its own section, and the save rules in 9.14 change.** A major version because two

@@ -603,7 +603,9 @@ large diff you did not understand is debugging deferred to a worse moment.
 
 **14.3** Moving assets into LFS later rewrites history. Binary assets cannot be merged, so without a
 lock the second person's work is lost. Binary assets diverge on long branches and cannot be merged
-back.
+back. The system prefix makes `git log --oneline` show what each commit touched and lets
+`git log --grep "^Combat:"` find a system's history. Bullets are read at a glance in a log or a pull
+request; a prose body gets skipped, so the one line that mattered is missed.
 
 **14.4** Functional tests are slow and brittle; logic tests are cheap and precise.
 

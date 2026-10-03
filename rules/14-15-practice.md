@@ -61,8 +61,18 @@ is in [why.md](../why.md).
   that on Git.
 - **Rename a C++ class or property with a Core Redirect in the same commit** (3.8).
 - **Commit messages:** an imperative summary under 72 characters, prefixed by the system -
-  `Quest: Reset transition phase on map arrival`. A body when the why is not obvious. One logical
-  change per commit.
+  `Quest: Reset transition phase on map arrival`. One logical change per commit.
+- **The body is a `*` bullet list**, after a blank line: one short line per bullet, saying what
+  changed, why when it is not obvious, and what was tested. No prose paragraphs. A one-line change
+  needs no body.
+
+  ```
+  Movement: Fix player rotation while sprinting
+
+  * Stop rotation following the camera during sprint
+  * Update movement flags from sprint state
+  * Verified with keyboard and controller
+  ```
 
 ### 14.4 Automated tests
 
