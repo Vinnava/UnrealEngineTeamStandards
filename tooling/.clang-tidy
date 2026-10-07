@@ -9,6 +9,8 @@
 #   - That a PascalCase On* member is really a delegate (4.7), or that back_Btn is really a
 #     BindWidget (7.4). Both are let through by name below, so a mis-cased member that happens to
 #     match either shape escapes.
+#   - A GAS attribute, which is PascalCase because its accessor macros paste the member name (25.4).
+#     Nothing in its name sets it apart, so its block carries NOLINTBEGIN / NOLINTEND instead.
 # Only readability-identifier-naming is enabled: every other check fights engine idioms or the
 # generated code behind UPROPERTY / UFUNCTION, and a noisy tool is a tool nobody runs (18).
 #

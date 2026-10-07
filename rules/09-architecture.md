@@ -280,5 +280,6 @@ The full procedure is section 24. Load it before you change anything a save hold
   - Health loss happens in exactly one place - a meta attribute resolved in
     `PostGameplayEffectExecute`.
   - Cues are cosmetic only; they do not run on a dedicated server.
+  - Naming is section 25.
 - **AI:** StateTree for new work; Behavior Trees are fine - do not migrate on principle. Perception is
   event-driven; never poll for targets.

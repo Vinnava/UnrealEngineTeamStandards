@@ -31,7 +31,8 @@ is in [why.md](../why.md).
 > camelCase.** Follow ours, not the engine's. Everything else follows Epic.
 
 **A delegate member is the one member variable that stays PascalCase** (4.7). The `BindWidget` member
-is the one that carries an underscore (7.4). There are no other exceptions to the camelCase rule.
+is the one that carries an underscore (7.4). A GAS attribute is PascalCase, because the accessor
+macros paste its name (25.4). There are no other exceptions to the camelCase rule.
 
 **A `constexpr` name is PascalCase wherever it is declared** - file scope, class scope or inside a
 function. That is what separates it from a plain `const` local, which is an ordinary local and stays

@@ -306,9 +306,17 @@ FString UAssetNamingValidator::FindBlueprintPrefix(const UBlueprint& blueprint) 
 		return TEXT("GA_");
 	}
 
+	// Static and burst cues derive from the UObject notify, actor and looping cues from the actor one (25.1)
+	if (AssetNamingValidator::IsChildOfClassNamed(parentClass, TEXT("GameplayCueNotify_Static")) ||
+		AssetNamingValidator::IsChildOfClassNamed(parentClass, TEXT("GameplayCueNotify_Actor")))
+	{
+		return TEXT("GC_");
+	}
+
+	// Scene components included; an ability system component is a component like any other (7.2, 25.1)
 	if (parentClass && parentClass->IsChildOf(UActorComponent::StaticClass()))
 	{
-		return TEXT("BPC_");
+		return TEXT("BP_AC_");
 	}
 
 	// Core-framework Blueprints carry a role prefix (7.2); no two of these classes share a line of descent

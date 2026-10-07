@@ -62,7 +62,7 @@ Step "Creating test assets"
 & $editor $project -run=pythonscript "-script=$(Join-Path $WorkDir 'make_assets.py')" @headless *> (Join-Path $WorkDir "make.log")
 Check ($LASTEXITCODE -eq 0) "the asset script runs"
 $created = @(Get-ChildItem (Join-Path $WorkDir "Content\_Test\*.uasset") -ErrorAction SilentlyContinue).Count
-Check ($created -eq 13) "13 test assets created under the content root (found $created)"
+Check ($created -eq 15) "15 test assets created under the content root (found $created)"
 Check ((Test-Path (Join-Path $WorkDir "Content\_Test\M_OldBase.uasset")) -and (Test-Path (Join-Path $WorkDir "Content\_Test\M_Base.uasset"))) "consolidating left a redirector behind"
 
 Step "Validating everything - the command CI runs"
@@ -72,6 +72,7 @@ Check ($LASTEXITCODE -ne 0) "failing assets make the commandlet exit non-zero (1
 $found = Findings $log
 $expected = [ordered]@{
     "BP_Main needs its 7.2 role prefix"       = "'BP_Main' must start with 'BP_GM_' or 'BP_TEMP_'"
+    "BPC_Health needs the 7.2 component infix" = "'BPC_Health' must start with 'BP_AC_' or 'BP_TEMP_'"
     "BP_TEMP_ragdoll is not PascalCase"       = "'BP_TEMP_ragdoll' needs a PascalCase name after 'BP_TEMP_'"
     "T_NotPow2 cannot stream"                 = "'T_NotPow2' is 300x200, which can never stream"
     "T_Big is over the configured budget"     = "'T_Big' is 1024x1024, over the 512 budget"
@@ -83,7 +84,7 @@ foreach ($case in $expected.GetEnumerator()) {
     Check ([bool]($found | Where-Object { $_ -like "*$($case.Value)*" })) $case.Key
 }
 $errors = @($found | Where-Object { $_ -match 'Error:' }).Count
-Check ($errors -eq 5) "exactly 5 errors, no false positives (found $errors)"
+Check ($errors -eq 6) "exactly 6 errors, no false positives (found $errors)"
 Check (-not ($found | Where-Object { $_ -match "BP_whatever" })) "nothing outside the content root is checked"
 Check (-not ($found | Where-Object { $_ -match "MacroHelpers" })) "a macro library passes - 7.1 gives it no prefix"
 Check (-not ($found | Where-Object { $_ -match "_C'" })) "a Blueprint's generated class is not reported twice (16.9)"
@@ -91,7 +92,7 @@ Check (-not ($found | Where-Object { $_ -match "ObjectRedirector" })) "a redirec
 Check (-not (Select-String -Path $log -Pattern "Ensure condition|did not return a validation result" -Quiet)) "no engine ensure - every accepted asset gets a verdict (16.9)"
 
 Step "Validating with the failing assets removed"
-foreach ($bad in "BP_Main", "BP_TEMP_ragdoll", "T_NotPow2", "T_Big", "SM_Sphere") {
+foreach ($bad in "BP_Main", "BPC_Health", "BP_TEMP_ragdoll", "T_NotPow2", "T_Big", "SM_Sphere") {
     Remove-Item (Join-Path $WorkDir "Content\_Test\$bad.uasset")
 }
 $log = Join-Path $WorkDir "validate-good.log"

@@ -7,7 +7,7 @@ Where a project has to pin something down - its module name, content root or sho
 standard uses a `<Project>` placeholder, and that project's `CLAUDE.md` fills it in - from
 [`tooling/project-template/`](tooling/project-template/).
 
-**Version 3.2.1** - see the [changelog](CHANGELOG.md). **Owner: @Vinnava** ("Ownership" below). Written against **Unreal Engine 5.x**. Every
+**Version 4.0.0** - see the [changelog](CHANGELOG.md). **Owner: @Vinnava** ("Ownership" below). Written against **Unreal Engine 5.x**. Every
 claim about engine behaviour was checked against **UE 5.7** source, and the defaults that matter
 were re-checked in **5.8**. Where a rule depends on the engine version, it says so.
 
@@ -58,6 +58,7 @@ span: `rules/05-06-comments-logging.md`. There is no second numbering scheme to 
 | 22 | [rules/22-upgrades.md](rules/22-upgrades.md) | Before an engine upgrade |
 | 23 | [rules/23-content-pipeline.md](rules/23-content-pipeline.md) | Before you import a texture, mesh or level |
 | 24 | [rules/24-save-data.md](rules/24-save-data.md) | Before you change anything a save file holds |
+| 25 | [rules/25-gas.md](rules/25-gas.md) | Only if the project uses GAS |
 
 **Lost, or something is behaving impossibly?** Go straight to the debugging playbook in
 [rules/14-15-practice.md](rules/14-15-practice.md) (section 15). It is the highest-value page here on an
@@ -88,7 +89,8 @@ prose is always a section.
   `12-ui` for UI, `13-performance` for performance work, `16-engine-traps` as a reference before
   touching a named system, `19-audio` for audio, `20-accessibility` for player-facing text and UI,
   **`21-online` only if the project talks to a backend**, `22-upgrades` at upgrade time,
-  `23-content-pipeline` for content work, `24-save-data` before changing anything a save holds.
+  `23-content-pipeline` for content work, `24-save-data` before changing anything a save holds,
+  **`25-gas` only if the project uses GAS**.
 - **Not in the always-loaded set:** `17-review` is read when reviewing, `18-adopting` once when a
   project starts. Both are large and neither is needed while writing code - loading them on every
   request costs context that the twelve-item gate in `17-gate` already covers.

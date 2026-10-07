@@ -54,6 +54,8 @@ blueprint("BP_Main", ROOT, unreal.GameModeBase)           # FAIL: a GameMode nee
 blueprint("BP_GM_Main", ROOT, unreal.GameModeBase)        # pass
 blueprint("BP_TEMP_ragdoll", ROOT, unreal.Actor)          # FAIL: lower case after BP_TEMP_ (7.3)
 blueprint("BP_Door", ROOT, unreal.Actor)                  # pass
+blueprint("BPC_Health", ROOT, unreal.ActorComponent)      # FAIL: a component needs BP_AC_ (7.2)
+blueprint("BP_AC_Health", ROOT, unreal.ActorComponent)    # pass
 blueprint("BP_whatever", OUTSIDE, unreal.Actor)           # SILENT: outside the content root
 blueprint("MacroHelpers", ROOT, unreal.Actor, unreal.BlueprintMacroFactory())  # pass: 7.1 gives no prefix
 tools.create_asset("Unmapped", ROOT, unreal.SubsurfaceProfile, unreal.SubsurfaceProfileFactory())  # WARNING

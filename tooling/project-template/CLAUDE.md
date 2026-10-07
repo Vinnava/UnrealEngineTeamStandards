@@ -20,7 +20,8 @@ only in the project README is a rule the assistant never sees.
 
 Add the optional files this project needs - `10-async`, `11-networking` if it replicates, `12-ui`,
 `13-performance`, `16-engine-traps`, `19-audio`, `20-accessibility`, `21-online` if it talks to a
-backend, `22-upgrades` at upgrade time. Delete the ones it does not.
+backend, `22-upgrades` at upgrade time, `23-content-pipeline`, `24-save-data`, `25-gas` if it uses
+GAS. Delete the ones it does not.
 
 **Every file is named for the sections it holds**, so `11-networking.md` is section 11 and
 `05-06-comments-logging.md` is sections 5 and 6. A number means the same thing everywhere.
@@ -38,7 +39,7 @@ lives elsewhere.
 
 **Record which version** (the README header) so a reader can tell whether a rule has moved on:
 
-> Standard version: 3.2.1
+> Standard version: 4.0.0
 
 ## This project
 

@@ -149,6 +149,9 @@ when you are new and building the habit. Items marked **[tool]** are already enf
 - [ ] **[tool]** New assets carry the correct type prefix and PascalCase name (7.1-7.3,
       `AssetNamingValidator`)
 - [ ] No vendor, tool, scratch or history names (`_Final`, `_v2`, `_test`) (7.3)
+- [ ] A Blueprint class is named for what it is, after its C++ parent; families share a `Base` (7.2)
+- [ ] GAS abilities, effects, cues, tags and attributes share one name, and attributes are
+      PascalCase inside `NOLINTBEGIN` (25.1-25.4)
 - [ ] Any prototype or test Blueprint is named `BP_TEMP_` / kept in `TEMP/`, and nothing shipping
       references it (8.2)
 - [ ] Blueprint variables have tooltips and categories; graphs have comment boxes (8.3)

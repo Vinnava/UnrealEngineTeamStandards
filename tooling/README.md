@@ -11,7 +11,7 @@ instead of by memory. Copy them into a project. If a project needs a change, cha
 | `check-standard.py` | Stays here | Consistency of **this repository**, not of a project: section references, links, encoding, checklist citations, file numbering, the index, the version policy and the always-loaded token budget. |
 | `check-project.py` | The project's CI | The rules in a **project's** source that a text scan can decide: `TAtomic`, `LogTemp`, unmarked synchronous loads, emoji and `U+FFFD`, the threading-candidate registry; mutable statics and mixed logging as warnings. |
 | `Validators/ProjectValidatorBase.h` / `.cpp` | The project's editor module | The shared base: owns the one content-root setting both validators read. |
-| `Validators/AssetNamingValidator.h` / `.cpp` | The project's editor module | Asset prefixes (7.1), core-framework role prefixes (7.2), and PascalCase names with no spaces (7.3) - on save, from Validate Data, and in CI. |
+| `Validators/AssetNamingValidator.h` / `.cpp` | The project's editor module | Asset prefixes (7.1), core-framework and component role prefixes (7.2), GAS prefixes (25.1), and PascalCase names with no spaces (7.3) - on save, from Validate Data, and in CI. |
 | `Validators/AssetContentValidator.h` / `.cpp` | The project's editor module | Textures that cannot stream or break the size budget, and heavy non-Nanite meshes with no LODs (23.1, 23.2). |
 | `tests/` | Stays here | Unit and mutation tests for both checkers, the in-engine validator harness, and the save versioning harness (24). |
 | `project-template/CLAUDE.md` | Project root | The rule-file imports, the project's pinned decisions, and **the override table** (00-core). The file an assistant actually reads. |
@@ -170,7 +170,9 @@ sight. Validation loads each asset, so a content root full of maps makes the eve
 prefix. A type with no row in the table **passes with a warning** naming the type, so a new engine
 type never blocks a commit but the table grows instead of quietly ageing. Textures accept `T_` or
 `HDRI_` (7.1). Core-framework Blueprints are matched by parent class and must carry their 7.2 role
-prefix, so a GameMode Blueprint named `BP_Main` fails and `BP_GM_Main` passes - with `BP_TEMP_` /
+prefix, so a GameMode Blueprint named `BP_Main` fails and `BP_GM_Main` passes, and a component
+Blueprint must be `BP_AC_`. Ability, effect and cue Blueprints must be `GA_`, `GE_` and `GC_` (25.1),
+matched by parent class name so nothing links GAS - with `BP_TEMP_` /
 `WBP_TEMP_` accepted whatever the parent (8.2). A Blueprint's generated class (`BP_Door_C`) is
 skipped; the Blueprint carries the name. A redirector left by a rename **passes with a warning**
 telling you to Fix Up Redirectors (14.3) - it keeps the old name, so it is never prefix-checked.
@@ -191,9 +193,9 @@ engine (`-EngineRoot`, default `C:\Program Files\Epic Games\UE_5.7`). It:
 
 1. **compiles the validators** in a scratch project with no PCH and no unity build - so a missing
    include cannot hide behind a shared PCH - and fails on any warning in them;
-2. **creates fourteen assets** in a headless editor, each built to pass, fail or warn on one rule -
+2. **creates sixteen assets** in a headless editor, each built to pass, fail or warn on one rule -
    including a redirector, left by consolidating one material into another (Replace References);
-3. **runs the `DataValidation` commandlet** - the command CI runs - and checks each of the five
+3. **runs the `DataValidation` commandlet** - the command CI runs - and checks each of the six
    expected errors and the two warnings, that nothing outside the content root is checked, that no
    generated class is reported twice, and that no engine `ensure` fires;
 4. **removes the failing assets and validates again**, checking that warnings alone exit 0.
@@ -205,7 +207,8 @@ no verdict.
 
 Written against the UE 5.7 `UEditorValidatorBase` API. The class-name table uses asset class names
 rather than types, so it links nothing beyond `Engine` and `DataValidation`. GAS classes are matched
-by name for the same reason.
+by name for the same reason - and the harness does not enable the GameplayAbilities plugin, so
+the `GA_`, `GE_` and `GC_` paths are compiled but not run by it.
 
 ## Proving the save versioning works
 

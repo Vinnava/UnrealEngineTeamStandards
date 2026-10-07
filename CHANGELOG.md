@@ -1,5 +1,39 @@
 # Changelog
 
+**4.0.0 - 2026-10-07**
+
+**Blueprint class naming and GAS naming.** A major version because one prefix changes; everything
+else here is new.
+
+- **Rule change: a component Blueprint is `BP_AC_`, not `BPC_`** (7.1, 7.2). It moves from its own
+  prefix in 7.1 to a role infix in 7.2, beside `BP_GM_` and `BP_CH_`, and covers scene components
+  and the ability system component. `AssetNamingValidator` now fails `BPC_`. Existing `BPC_` assets
+  are renamed in one planned batch (7.6), or kept for now as a project override citing 7.2.
+- **7.2 says how to name a Blueprint class**, not only its role: a noun for what it is, the C++
+  parent's name without `A` / `U` and without a word the infix already says, and `Base` on a parent
+  with a variant segment on each child.
+- **New section 25, [Gameplay Ability System naming](rules/25-gas.md)**, on demand and only for a
+  project that uses GAS: the asset prefixes and how an effect's name is built (25.1), the tag roots
+  and one name across asset and tag (25.2), C++ class names (25.3), and attributes (25.4). 9.15
+  points to it. The always-loaded set is now 21,997 of its 22,000 tokens, so the next always-
+  loaded addition has to replace something or raise the budget.
+- **New prefix `GC_`** for gameplay cue notifies (7.1, 25.1), enforced by `AssetNamingValidator`
+  for static, burst, actor and looping cues alike.
+- **4.1 gains its third named exception**: a GAS attribute is PascalCase, because the accessor macros
+  paste its name (25.4). `.clang-tidy` cannot tell an attribute apart, so the attribute block carries
+  `NOLINTBEGIN` / `NOLINTEND`; the file's header says so.
+- **17.2** gains a Blueprint class name item and a GAS item; **22.2** gains rows for the two GAS
+  engine claims, which were written from the engine's source as remembered and have not yet been
+  re-checked against a 5.7 checkout - the first upgrade or pilot to touch GAS does it.
+- **Validator harness**: a `BPC_` component that must fail and a `BP_AC_` one that must pass;
+  fifteen assets under the content root and six expected errors. These two cases have not yet been run in an engine. The
+  harness does not enable GameplayAbilities, so the GAS prefixes are compiled but not run.
+- The project template's optional-file list now names `23-content-pipeline`, `24-save-data` and
+  `25-gas`.
+- **Cadence**: 2.0.0, 3.0.0 and 4.0.0 are three majors in two weeks, against the README's "at most twice a
+  year". One renamed prefix seemed better shipped now, before the pilot names many components, than
+  held for a later major.
+
 **3.2.1 - 2026-10-03**
 
 - **The naming validator warns on a redirector instead of asking for a prefix row.** A rename that

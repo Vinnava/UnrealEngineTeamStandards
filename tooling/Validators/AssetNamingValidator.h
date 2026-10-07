@@ -7,7 +7,7 @@
 class UBlueprint;
 
 /**
- * Fails assets under the project content root that break the naming rules in standard 7.1 to 7.3.
+ * Fails assets under the project content root that break the naming rules in standard 7.1 to 7.3 and 25.1.
  * Runs on save, from Tools > Validate Data, and in CI. Lives in an editor module that depends on DataValidation.
  */
 UCLASS(Config = Editor)

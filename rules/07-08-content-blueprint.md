@@ -48,7 +48,6 @@ is in [why.md](../why.md).
 | `ST_` | State Tree | `ST_GuardPatrol` |
 | `BPI_` | Blueprint Interface | `BPI_Interactable` |
 | `BFL_` | Blueprint Function Library | `BFL_InventoryUtils` |
-| `BPC_` | Blueprint Actor Component | `BPC_Inventory`, `BPC_Health` |
 | `PM_` | Physical Material | `PM_Metal`, `PM_Grass` |
 | `ATT_` | Sound Attenuation | `ATT_Footsteps` |
 | `SCL_` | Sound Class | `SCL_Music`, `SCL_SFX` |
@@ -63,6 +62,7 @@ is in [why.md](../why.md).
 | `CT_` | Curve Table | `CT_XPPerLevel` |
 | `GE_` | Gameplay Effect (GAS) | `GE_Damage_Fire` |
 | `GA_` | Gameplay Ability (GAS) | `GA_Dash` |
+| `GC_` | Gameplay Cue Notify (GAS, all of section 25) | `GC_Damage_Fire` |
 
 **One prefix per type, never a choice of two.** Blueprint structs are `F_`, matching the C++ `F`
 prefix - not `S_`. **The single exception is `HDRI_`**, which a texture authored as an HDRI backdrop
@@ -75,9 +75,9 @@ the second knowing deviation in the standard, after camelCase members (4.1). A p
 rather match Epic writes `PA_` as an override with this section number, and changes the one row in
 `AssetNamingValidator`.
 
-### 7.2 Blueprint role infixes
+### 7.2 Blueprint class names and role infixes
 
-Core-framework Blueprints carry a second segment naming their role:
+Core-framework Blueprints and components carry a second segment naming their role:
 
 | Infix | Role | Examples |
 |---|---|---|
@@ -88,8 +88,14 @@ Core-framework Blueprints carry a second segment naming their role:
 | `BP_GI_` | GameInstance | `BP_GI_Main` |
 | `BP_CH_` | Character | `BP_CH_Player`, `BP_CH_NPCGuard` |
 | `BP_AIC_` | AI Controller | `BP_AIC_Guard` |
+| `BP_AC_` | Actor Component, scene components included | `BP_AC_Inventory`, `BP_AC_Health` |
 
 Everything else is simply `BP_<Thing>`: `BP_PortalTrigger`, `BP_Wardrobe`, `BP_ApartmentDoor`.
+
+- **Name it for what it is - a noun, not what it does.** `BP_PressurePlate`, not `BP_StepTrigger`.
+- **A C++ class's Blueprint drops the `A` / `U` and any word the infix says:** `APressurePlate` is
+  `BP_PressurePlate`, `UHealthComponent` is `BP_AC_Health`.
+- **A parent ends in `Base`; children add a variant** (7.3): `BP_DoorBase`, `BP_Door_Locked`.
 
 ### 7.3 Naming the rest of the name
 

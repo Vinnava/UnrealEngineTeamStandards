@@ -49,6 +49,8 @@ upgrade, not a suggestion.
 | Tagged serialisation converts a saved number to a wider numeric property | 24.2 | `TProperty_Numeric::ConvertFromType` in `UObject/UnrealType.h` |
 | Async save and load completions arrive through `FTSTicker::GetCoreTicker()` | 24.6 | `ISaveGameSystem::OnAsyncComplete` in `SaveGameSystem.cpp` |
 | `GlobalConfig` loads from the declaring base class's section | tooling | `CPF_GlobalConfig` in `ObjectMacros.h` - then re-run the validator test in `tooling/README.md` |
+| A cue notify with no cue tag derives one from its asset name, stripping `GC_`, in an interactive editor only | 25.1 | `UAbilitySystemGlobals::DeriveGameplayCueTagFromAssetName` in `AbilitySystemGlobals.cpp` |
+| Attribute accessor macros paste the member name; table rows are looked up as `<SetClass>.<Attribute>` | 25.4 | `ATTRIBUTE_ACCESSORS_BASIC` in `AttributeSet.h`; `UAttributeSet::InitFromMetaDataTable` in `AttributeSet.cpp` |
 | Editor validator API shape | 18, tooling | `EditorValidatorBase.h` - the virtual signatures move between versions |
 | Every trap in section 16 | 16 | Re-test the ones the project relies on; a fixed trap is worth deleting |
 

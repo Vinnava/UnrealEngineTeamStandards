@@ -310,6 +310,18 @@ it is picked from a backdrop list, not from the texture browser, and `T_Overcast
 away from the thing it belongs to. The cost is that the validator has to accept either for every
 texture class, which is why no second exception is worth it.
 
+**7.2 `BP_AC_`, not `BPC_`.** Until 4.0.0 a component Blueprint was `BPC_`, the one Blueprint role
+that had its own top-level prefix instead of a `BP_` infix. Every other role a Blueprint plays -
+GameMode, Character, controller - is `BP_<Role>_`, so `BPC_` was the odd one out: it did not sort
+with the other Blueprints, and a reader who knew the infix rule went looking for `BP_AC_` and found
+nothing. Being a component is a role like the others, so it is written like them.
+
+**7.2 Naming the class.** A Blueprint named for what it does (`BP_StepTrigger`) has to be renamed the
+day it does something else; one named for what it is does not. Taking the C++ parent's name means a
+search for the class finds its Blueprint too, and dropping the word the infix already carries keeps
+`BP_AC_HealthComponent` from saying "component" twice. `Base` on a parent, and a variant segment on
+its children, is the same rule C++ uses (`ANPCBase`), and it makes a family sort as one block.
+
 **7.3** Spaces break command-line tooling and cook paths. A `BS_Idle_Walk_Run_1` next to
 `BS_Idle_Walk_Run` is a decision nobody made. Git holds history; the asset name holds identity.
 
@@ -397,6 +409,7 @@ migration lands with its format change from day one; section 24 explains why the
 at the first external build.
 
 **9.15** GAS has a steep ramp and a large commitment; the middle path keeps the option open.
+Naming lives in section 25 so a project without GAS never loads it.
 
 ---
 
@@ -906,4 +919,33 @@ on every engine upgrade (22.2).
 Keeping the GUID's definition and its registration in one translation unit is defensive: every
 `Serialize` references the GUID, so the object that registers it cannot be left out of a link. This
 has not been tested in a monolithic build.
+
+---
+
+## 25. Gameplay Ability System naming
+
+A GAS feature is spread over more objects than anything else in the engine: one dash is an ability
+Blueprint, a C++ ability, a cooldown effect, a cost effect, a cooldown tag, an identity tag, a cue
+and a cue tag. Before this section the standard named two of those eight (`GA_`, `GE_`). When each
+is named by whoever made it, finding the rest from any one of them is a search through the tag
+manager and the Content Browser; when they share one name, it is one search.
+
+**Why `GC_` for cues.** It is the prefix the engine itself strips when it derives a cue tag from an
+asset name, so a cue named this way reads back as its own tag. `GCN_`, used in some samples, is the other
+common choice; it gains nothing here and loses that. The derivation is not relied on - it runs only in an
+interactive editor, so a cook or a commandlet would see an empty tag - which is why 25.1 says to set
+the tag explicitly as well.
+
+**Why effects are named purpose-first.** Effects are found by what they do far more often than by
+which ability uses them: "show me every cooldown" is a common question, "show me everything about the
+dash" is answered by the tag. `GE_Cooldown_Dash` answers both.
+
+**Why attributes break 4.1.** The accessor macros generate four functions from the member name. A
+camelCase attribute moves the violation from one member onto every call site, as `Gethealth()`.
+Marking the block with `NOLINTBEGIN` keeps `.clang-tidy` honest about every other member, rather than
+loosening it for all PascalCase names.
+
+**Why ability tasks keep the engine's underscore.** A task is used from a Blueprint node menu and a
+class picker full of engine tasks named `UAbilityTask_<Verb>`. A project task named any other way is
+the one nobody finds.
 
