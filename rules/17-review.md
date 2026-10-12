@@ -135,6 +135,18 @@ when you are new and building the habit. Items marked **[tool]** are already enf
 - [ ] The migration is its own function, called from `ApplyMigrations` in enum order - never from
       `Serialize` (24.4, 24.5)
 - [ ] A new fixture is committed if this build goes outside the team (24.6)
+- [ ] Saved data names content by a stable ID - never a pointer, an asset path or an array index;
+      writes go through a temporary slot and keep a backup (24.8)
+
+**Platforms** (if the project ships on more than one platform or store)
+
+- [ ] No platform branch in shared gameplay code; platform code sits behind an interface, in a
+      platform-named folder (28.1)
+- [ ] Every new input action is mapped on every device the project ships on, and every new screen
+      works with a gamepad alone (28.3)
+- [ ] A rendering, material, loading or input change has run on a lowest-tier build (28.8)
+- [ ] No store ID, product ID or entitlement check in gameplay code, and no hard reference to DLC
+      content (28.2, 28.9)
 
 **Performance**
 
@@ -144,8 +156,10 @@ when you are new and building the habit. Items marked **[tool]** are already enf
 
 **Content**
 
-- [ ] **[tool]** Textures stream and fit the size budget; heavy non-Nanite meshes have LODs (23.1,
-      23.2, `AssetContentValidator`)
+- [ ] **[tool]** Textures stream, fit the size budget and match their map-type suffix; heavy
+      non-Nanite meshes have LODs (23.1, 23.2, `AssetContentValidator`)
+- [ ] Collision hulls and sockets named for the importer; no gameplay logic in a Level Blueprint; the
+      asset fits its category budget (23.2, 23.3, 23.8)
 - [ ] **[tool]** New assets carry the correct type prefix and PascalCase name (7.1-7.3,
       `AssetNamingValidator`)
 - [ ] No vendor, tool, scratch or history names (`_Final`, `_v2`, `_test`) (7.3)
@@ -158,7 +172,7 @@ when you are new and building the habit. Items marked **[tool]** are already enf
 - [ ] Widget bind names are `<role>_<Type>`, identical in UMG and C++ (7.4)
 - [ ] New DataAsset types override `IsDataValid` and are registered with the Asset Manager (6.7,
       13.3)
-- [ ] Binary assets you edited were locked; redirectors fixed up after any move (14.3)
+- [ ] Binary assets you edited were locked; redirectors fixed up after any move (14.3, 26.1)
 
 **Audio, accessibility and online** (where the change touches them)
 

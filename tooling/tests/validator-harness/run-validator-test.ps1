@@ -12,6 +12,7 @@
          the absence of engine ensures, and the exit code;
       4. deletes the failing assets, validates again, and checks that warnings alone - an unmapped type
          and a redirector - exit 0.
+    The GameplayAbilities plugin is enabled so the GAS prefixes (standard 25.1) run, not just compile.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tooling\tests\validator-harness\run-validator-test.ps1
@@ -62,7 +63,7 @@ Step "Creating test assets"
 & $editor $project -run=pythonscript "-script=$(Join-Path $WorkDir 'make_assets.py')" @headless *> (Join-Path $WorkDir "make.log")
 Check ($LASTEXITCODE -eq 0) "the asset script runs"
 $created = @(Get-ChildItem (Join-Path $WorkDir "Content\_Test\*.uasset") -ErrorAction SilentlyContinue).Count
-Check ($created -eq 15) "15 test assets created under the content root (found $created)"
+Check ($created -eq 28) "28 test assets created under the content root (found $created)"
 Check ((Test-Path (Join-Path $WorkDir "Content\_Test\M_OldBase.uasset")) -and (Test-Path (Join-Path $WorkDir "Content\_Test\M_Base.uasset"))) "consolidating left a redirector behind"
 
 Step "Validating everything - the command CI runs"
@@ -72,11 +73,17 @@ Check ($LASTEXITCODE -ne 0) "failing assets make the commandlet exit non-zero (1
 $found = Findings $log
 $expected = [ordered]@{
     "BP_Main needs its 7.2 role prefix"       = "'BP_Main' must start with 'BP_GM_' or 'BP_TEMP_'"
-    "BPC_Health needs the 7.2 component infix" = "'BPC_Health' must start with 'BP_AC_' or 'BP_TEMP_'"
+    "BP_Health needs the 7.2 component infix"  = "'BP_Health' must start with 'BP_AC_' or 'BP_TEMP_'"
+    "BP_Dash needs the 25.1 ability prefix"    = "'BP_Dash' must start with 'GA_' or 'BP_TEMP_'"
+    "BP_DamageFire needs the 25.1 effect prefix" = "'BP_DamageFire' must start with 'GE_' or 'BP_TEMP_'"
+    "a burst cue needs the 25.1 cue prefix"    = "'BP_HitCue' must start with 'GC_' or 'BP_TEMP_'"
+    "a looping cue needs the 25.1 cue prefix"  = "'BP_BurnLoop' must start with 'GC_' or 'BP_TEMP_'"
+    "the ability system component is BP_AC_"   = "'BP_AbilitySystem' must start with 'BP_AC_' or 'BP_TEMP_'"
     "BP_TEMP_ragdoll is not PascalCase"       = "'BP_TEMP_ragdoll' needs a PascalCase name after 'BP_TEMP_'"
     "T_NotPow2 cannot stream"                 = "'T_NotPow2' is 300x200, which can never stream"
     "T_Big is over the configured budget"     = "'T_Big' is 1024x1024, over the 512 budget"
     "SM_Sphere has no LODs"                   = "'SM_Sphere' has 960 triangles, one LOD, and Nanite off"
+    "T_Wall_N is not compressed as a normal map" = "'T_Wall_N' is a normal map by its _N suffix"
     "an unmapped type warns"                  = "'Unmapped' is a 'SubsurfaceProfile', which has no prefix rule yet"
     "a redirector warns with the 14.3 fix"    = "'M_OldBase' is a redirector left by a rename or move"
 }
@@ -84,15 +91,20 @@ foreach ($case in $expected.GetEnumerator()) {
     Check ([bool]($found | Where-Object { $_ -like "*$($case.Value)*" })) $case.Key
 }
 $errors = @($found | Where-Object { $_ -match 'Error:' }).Count
-Check ($errors -eq 6) "exactly 6 errors, no false positives (found $errors)"
+Check ($errors -eq 12) "exactly 12 errors, no false positives (found $errors)"
 Check (-not ($found | Where-Object { $_ -match "BP_whatever" })) "nothing outside the content root is checked"
 Check (-not ($found | Where-Object { $_ -match "MacroHelpers" })) "a macro library passes - 7.1 gives it no prefix"
+foreach ($good in "GA_Dash", "BP_TEMP_Dash", "GE_Damage_Fire", "GC_Damage_Fire", "GC_Burning", "BP_AC_AbilitySystem", "T_Floor_N") {
+    $exists = Test-Path (Join-Path $WorkDir "Content\_Test\$good.uasset")
+    Check ($exists -and -not ($found | Where-Object { $_ -match "'$good'" })) "$good exists and passes"
+}
 Check (-not ($found | Where-Object { $_ -match "_C'" })) "a Blueprint's generated class is not reported twice (16.9)"
 Check (-not ($found | Where-Object { $_ -match "ObjectRedirector" })) "a redirector is not reported as a missing prefix rule"
 Check (-not (Select-String -Path $log -Pattern "Ensure condition|did not return a validation result" -Quiet)) "no engine ensure - every accepted asset gets a verdict (16.9)"
 
 Step "Validating with the failing assets removed"
-foreach ($bad in "BP_Main", "BPC_Health", "BP_TEMP_ragdoll", "T_NotPow2", "T_Big", "SM_Sphere") {
+foreach ($bad in "BP_Main", "BP_Health", "BP_TEMP_ragdoll", "T_NotPow2", "T_Big", "SM_Sphere", "BP_Dash",
+    "BP_DamageFire", "BP_HitCue", "BP_BurnLoop", "BP_AbilitySystem", "T_Wall_N") {
     Remove-Item (Join-Path $WorkDir "Content\_Test\$bad.uasset")
 }
 $log = Join-Path $WorkDir "validate-good.log"

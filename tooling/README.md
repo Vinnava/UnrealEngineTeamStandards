@@ -7,15 +7,18 @@ instead of by memory. Copy them into a project. If a project needs a change, cha
 |---|---|---|
 | `.clang-format` | Project root | Braces, indentation, line length (3.10). Includes are never reordered, so `.generated.h` stays last (3.4). |
 | `.clang-tidy` | Project root | The case rules in 4.1 - camelCase members, locals and parameters; PascalCase functions, constants and enumerators. |
+| `.clangd` | Project root | clangd's settings for Unreal: the flag without which a log macro stops every file, and no unused-include noise (27.4). |
 | `.editorconfig` | Project root | Encoding, tabs and trailing whitespace, for editors that do not read `.clang-format`. |
 | `check-standard.py` | Stays here | Consistency of **this repository**, not of a project: section references, links, encoding, checklist citations, file numbering, the index, the version policy and the always-loaded token budget. |
 | `check-project.py` | The project's CI | The rules in a **project's** source that a text scan can decide: `TAtomic`, `LogTemp`, unmarked synchronous loads, emoji and `U+FFFD`, the threading-candidate registry; mutable statics and mixed logging as warnings. |
+| `verify-standard.py` | The project's CI, run from the pinned copy | That the project's copy of the standard is the release it claims, unedited - against `MANIFEST.sha256` at the repository root (26.4). Any source control. |
 | `Validators/ProjectValidatorBase.h` / `.cpp` | The project's editor module | The shared base: owns the one content-root setting both validators read. |
 | `Validators/AssetNamingValidator.h` / `.cpp` | The project's editor module | Asset prefixes (7.1), core-framework and component role prefixes (7.2), GAS prefixes (25.1), and PascalCase names with no spaces (7.3) - on save, from Validate Data, and in CI. |
-| `Validators/AssetContentValidator.h` / `.cpp` | The project's editor module | Textures that cannot stream or break the size budget, and heavy non-Nanite meshes with no LODs (23.1, 23.2). |
-| `tests/` | Stays here | Unit and mutation tests for both checkers, the in-engine validator harness, and the save versioning harness (24). |
+| `Validators/AssetContentValidator.h` / `.cpp` | The project's editor module | Textures that cannot stream, break the size budget or contradict their map-type suffix, and heavy non-Nanite meshes with no LODs (23.1, 23.2). |
+| `claude/` | Stays here; `install.py` generates the project's `.claude/` from it | The Claude kit (27): rule groups, agents, skills, hooks, filter scripts and a status line. |
+| `tests/` | Stays here | Unit and mutation tests for the checkers, the verifier and the Claude kit, the in-engine validator harness, and the save versioning harness (24). |
 | `project-template/CLAUDE.md` | Project root | The rule-file imports, the project's pinned decisions, and **the override table** (00-core). The file an assistant actually reads. |
-| `project-template/.gitattributes` | Project root, before the first asset | Git LFS with `lockable`, without which `git lfs lock` in 14.3 does not work. |
+| `project-template/.gitattributes` | Project root, before the first asset - **git and Gitea only** | Git LFS with `lockable`, without which `git lfs lock` does not work (26.3). |
 | `project-template/PULL_REQUEST_TEMPLATE.md` | The project's `.github/` | The rules no tool can check (18.2), sized like 17.1 rather than 17.2. |
 
 ## Starting a project
@@ -25,7 +28,7 @@ Copy `project-template/` into the new project and fill in every `<Project>`:
 | From | To |
 |---|---|
 | `project-template/CLAUDE.md` | `CLAUDE.md` at the project root |
-| `project-template/.gitattributes` | `.gitattributes` at the project root, **before the first asset commit** |
+| `project-template/.gitattributes` | `.gitattributes` at the project root, **before the first asset commit** - on git or Gitea; other systems set up locking as 26.3 says |
 | `project-template/PULL_REQUEST_TEMPLATE.md` | `.github/PULL_REQUEST_TEMPLATE.md` |
 
 `CLAUDE.md` is the one that matters most. It holds the rule-file imports **and the override table**:
@@ -45,15 +48,17 @@ python tooling/check-standard.py
 It fails on a reference to a section that does not exist, a broken relative link, a non-ASCII
 character or `U+FFFD` (5.5), a rule file whose name disagrees with the sections it holds, a rule file
 missing from the README index, a README, changelog or project template that disagree on the version,
-a release that changes a rule's meaning without a major version, and an always-loaded import set over
-its token budget. It warns when a review-list item in 17.2 cites no section - that citation is what
-makes a rule change greppable across the five places a rule tends to be mentioned.
+a release that changes a rule's meaning without a major version, an always-loaded set or rule group
+over its token budget, and a rule file that nothing loads (27.1). It warns when a review-list item in
+17.2 cites no section - that citation is what makes a rule change greppable across the five places a
+rule tends to be mentioned. In a git checkout it checks only what git would commit, so an IDE folder
+or a local scratch file never fails it.
 
 It needs Python 3.10 or newer and nothing else. CI runs it on every push.
 
 ## Checking a project
 
-`check-project.py` is copied into nothing - a project's CI runs it from the pinned submodule:
+`check-project.py` is copied into nothing - a project's CI runs it from the pinned copy at `standards/`:
 
 ```bash
 python standards/tooling/check-project.py . --warn-only
@@ -72,21 +77,91 @@ synchronously. Code in a prototype module (1.6) is checked only for `TAtomic` an
 - **An allowed synchronous load carries `// sync-load-ok: <reason>`** on its line or the line above
   (10.3); that marker is how the checker tells an exception from a hitch.
 
+## Verifying a pinned copy
+
+A project pins one release at `standards/` - a vendored copy or a git submodule (26.4) - and its CI
+proves the copy is that release, unedited:
+
+```bash
+python standards/tooling/verify-standard.py
+```
+
+It hashes every file against `MANIFEST.sha256`, which ships at the root of each release, and prints
+the version. It reads files, not history, so it works the same on every source control system, and it
+reads CRLF as LF, so a checkout that converts line endings still verifies.
+
+- **An edited or missing file fails.** A deviation belongs in the project's override table, not in the
+  copy (00-core).
+- **The optional files may be left out** - `.github/`, `tooling/tests/`, `.gitattributes`,
+  `.gitignore` - and are counted, not failed.
+- **A file the project added only warns** - a note recording where the copy came from is fine.
+
+**In this repository, the manifest is regenerated with every change** and CI fails when it lags:
+
+```bash
+python tooling/verify-standard.py --write
+python tooling/verify-standard.py --complete
+```
+
+`--complete` also fails on an omitted file, an unlisted file and a manifest written for another
+version.
+
+## The Claude kit
+
+Section 27 says what the kit is for; this is what it holds and how to run it. From the project root,
+with the standard pinned at `standards/`:
+
+```bash
+python standards/tooling/claude/install.py
+```
+
+Pass `--replicates` once if the project replicates, and `--editor-mcp` if it uses the editor
+connection (27.8); later refreshes remember both, and `--no-replicates` / `--no-editor-mcp` turn them
+off. `--check` changes nothing and exits 1 when `.claude/` differs from the kit - a hand edit, a
+missing file, or a standard that moved on - so it belongs in the every-commit tier.
+
+| In `claude/` | Becomes | Does |
+|---|---|---|
+| `rule-groups.json` | `.claude/rules/standard/*.md`, path-scoped | Loads each rule file the first time Claude touches a matching path (27.1) |
+| `agents/` | `.claude/agents/` | ue-implementer, ue-reviewer, ue-engine-source, ue-runner (27.3) |
+| `skills/` | `.claude/skills/` | `/ue-plan`, `/ue-implement`, `/ue-gate`, `/ue-conflict`, `/ue-new-class`, `/ue-commit-msg`, `/ue-save-version`, `/ue-upgrade-engine`, `/ue-upgrade-standard`, and the knowledge skills that embed a rule file |
+| `settings.json` | Merged into `.claude/settings.json` | `opusplan`, per-model effort, the plans folder, the status line, the hooks, permission to run the kit's scripts, and the plugins it enables - `clangd-lsp` always, Epic's editor-connection plugin with `--editor-mcp` |
+| `hooks/` | Run in place | The edit check, the guard on `standards/`, the Stop gate (27.4) |
+| `scripts/` | Run in place | `ue_build`, `ue_validate`, `ue_log`, `ue_engine` - each prints only what matters and keeps the full log in `Saved/Claude/` |
+| `statusline.py` | Run in place | Model, context used, cache hits and the standard's version (27.6) |
+
+Generated files carry a notice naming their source. Everything else runs from the pinned copy, so
+`verify-standard.py` proves it unedited. The hooks and scripts are standard-library Python: the
+command is `python` on Windows and `python3` elsewhere, or whatever `--python` names.
+
+**What the tests prove and what they do not.** `tests/test_claude_kit.py` runs the installer, the hooks
+- as subprocesses fed the event JSON Claude Code sends - and the scripts' filters in a vendored scratch
+project. What Claude Code itself does with them - loading a path-scoped rule only for a matching file,
+expanding `${CLAUDE_PROJECT_DIR}` in hook arguments, honouring `plansDirectory` - is proven in a real
+session and re-proven when Claude Code changes (27.7).
+
 ## Tests
 
 ```bash
 python -m unittest discover -s tooling/tests -v
 ```
 
+- **`test_claude_kit.py`** installs the kit into a vendored scratch project and runs its hooks the way
+  Claude Code does: an error in an edited file blocks, a clean file stays silent, an edit to the pinned
+  standard is refused, and the Stop gate blocks once and then lets the turn end.
+
 - **`test_check_project.py`** gives every check a case that must fire and a case that must not. The
   second kind matters as much: a check that fires on a comment, a constant or an engine idiom gets
   disabled.
+- **`test_verify_standard.py`** vendors the repository into a scratch folder the way a project does
+  and asserts the verifier fails an edit, a missing file and a stale manifest, and forgives line
+  endings, the optional files and a project's own note.
 - **`test_check_standard.py`** copies the repository, breaks it one way at a time, and asserts
   `check-standard.py` notices. A consistency checker that passes a clean repository proves nothing on
   its own - in 1.8 a check whose regex contained a backspace character passed everything, because it
   matched nothing. These tests are what caught it.
 
-CI runs both on every push.
+CI runs all of them on every push.
 
 ## Running clang-format
 
@@ -105,13 +180,22 @@ test case: format them, and a non-empty diff means the config drifted. CI checks
 
 ## Running clang-tidy
 
-clang-tidy needs a compile database, which UBT generates:
+clang-tidy and clangd (27.4) need a compile database, which UBT generates. From the project root,
+with the full path to the engine's `Build.bat`:
 
 ```
-Build.bat -Mode=GenerateClangDatabase -Project=<Project>.uproject <Project>Editor Win64 Development
+Build.bat -Mode=GenerateClangDatabase -Project=<full path>\<Project>.uproject <Project>Editor Win64 Development -Compiler=VisualStudio2022 -OutputDir=<full path to the project>
 ```
 
-That writes `compile_commands.json` to the project root. Then run it over the files a commit
+Both flags are needed (UE 5.7 and 5.8, `GenerateClangDatabase.cs`): without `-Compiler` UBT switches
+to the Clang toolchain and fails unless Clang is installed, and without `-OutputDir` it writes
+`compile_commands.json` to the engine folder. Name the compiler the project builds with -
+`VisualStudio2026` on that toolchain. The database is built without unity files, so it also catches a
+missing include that a unity build hides. Regenerate it after adding files or modules, and build once
+first so the generated headers exist.
+
+Copy `.clangd` to the project root too: without it clangd stops at the first log macro and reports
+false errors through the rest of the file. Then run clang-tidy over the files a commit
 touched, not the whole tree - a full pass on an Unreal project takes hours:
 
 ```
@@ -172,8 +256,8 @@ type never blocks a commit but the table grows instead of quietly ageing. Textur
 `HDRI_` (7.1). Core-framework Blueprints are matched by parent class and must carry their 7.2 role
 prefix, so a GameMode Blueprint named `BP_Main` fails and `BP_GM_Main` passes, and a component
 Blueprint must be `BP_AC_`. Ability, effect and cue Blueprints must be `GA_`, `GE_` and `GC_` (25.1),
-matched by parent class name so nothing links GAS - with `BP_TEMP_` /
-`WBP_TEMP_` accepted whatever the parent (8.2). A Blueprint's generated class (`BP_Door_C`) is
+matched by parent class name so nothing links GAS. `BP_TEMP_` is accepted for any Blueprint whatever
+its parent - an ability or an AnimBP included - and `WBP_TEMP_` for a Widget Blueprint (8.2). A Blueprint's generated class (`BP_Door_C`) is
 skipped; the Blueprint carries the name. A redirector left by a rename **passes with a warning**
 telling you to Fix Up Redirectors (14.3) - it keeps the old name, so it is never prefix-checked.
 
@@ -193,11 +277,16 @@ engine (`-EngineRoot`, default `C:\Program Files\Epic Games\UE_5.7`). It:
 
 1. **compiles the validators** in a scratch project with no PCH and no unity build - so a missing
    include cannot hide behind a shared PCH - and fails on any warning in them;
-2. **creates sixteen assets** in a headless editor, each built to pass, fail or warn on one rule -
-   including a redirector, left by consolidating one material into another (Replace References);
-3. **runs the `DataValidation` commandlet** - the command CI runs - and checks each of the six
-   expected errors and the two warnings, that nothing outside the content root is checked, that no
-   generated class is reported twice, and that no engine `ensure` fires;
+2. **creates twenty-nine assets** in a headless editor, each built to pass, fail or warn on one rule -
+   including a redirector, left by consolidating one material into another (Replace References), and,
+   with the GameplayAbilities plugin enabled, a passing and a failing ability, effect, static cue,
+   actor cue and ability system component - the last on a `Blueprintable` class in the harness's own
+   `NamingCheckGas` module, because the engine's is not (25.1). An asset the editor refuses to
+   create fails the run, and every asset built to pass must exist before it counts as passing;
+3. **runs the `DataValidation` commandlet** - the command CI runs - and checks each of the twelve
+   expected errors and the two warnings, that every asset built to pass does, that nothing outside the
+   content root is checked, that no generated class is reported twice, and that no engine `ensure`
+   fires;
 4. **removes the failing assets and validates again**, checking that warnings alone exit 0.
 
 It exits 0 only if every check passes. It was built by doing all of this by hand first, and that
@@ -207,8 +296,9 @@ no verdict.
 
 Written against the UE 5.7 `UEditorValidatorBase` API. The class-name table uses asset class names
 rather than types, so it links nothing beyond `Engine` and `DataValidation`. GAS classes are matched
-by name for the same reason - and the harness does not enable the GameplayAbilities plugin, so
-the `GA_`, `GE_` and `GC_` paths are compiled but not run by it.
+by name for the same reason, so a project without GAS builds the validators unchanged; the harness
+enables the plugin only to run those paths. Close any editor running on the same engine first - the
+build step can trip the Live Coding guard.
 
 ## Proving the save versioning works
 

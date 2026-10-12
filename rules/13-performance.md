@@ -48,7 +48,8 @@ Six principles:
 - Then one stat group for that stage, then a trace. `r.ScreenPercentage 50` halves the GPU time? You
   are pixel-bound.
 - **Read the count before the time** - `dumpticks` and `obj list` come first.
-- **A budget has line items and owners.** The project README writes the frame budget per target:
+- **A budget has line items and owners.** The project writes the frame budget per target in its
+  `CLAUDE.md` (28.4):
   ceiling minus a reserve, divided into lines (game thread, animation, UI, GPU passes, memory, VRAM),
   **each with a named owner**, judged on p99 and hitches per minute.
 - **Check the Size Map** on any Blueprint or widget that references content.

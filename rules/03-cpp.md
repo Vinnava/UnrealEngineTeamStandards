@@ -262,9 +262,11 @@ Shipping builds default `DO_CHECK` and `DO_ENSURE` to off (`Build.h`, `Assertion
   while *opening*, not while being a door.
 - **Stagger intervals and looping timers** with a random first delay.
 - **Tick groups:** `TG_PrePhysics` is the default; `TG_DuringPhysics` for work that does not touch
-  physics; read physics results in `TG_PostPhysics`; cameras in `TG_PostUpdateWork`. **Order within a
-  group is undefined** - declare it with `AddTickPrerequisiteActor` / `AddTickPrerequisiteComponent`,
-  or do not rely on it.
+  physics; read physics results in `TG_PostPhysics`. **Anything that moves the camera or its rig
+  ticks by `TG_PostPhysics`** - the camera manager updates after that group and before
+  `TG_PostUpdateWork` (`LevelTick.cpp`), so a camera moved later lags a frame. `TG_PostUpdateWork` is
+  for work that reads the final camera. **Order within a group is undefined** - declare it with
+  `AddTickPrerequisiteActor` / `AddTickPrerequisiteComponent`, or do not rely on it.
 - **Many similar things tick as one** - a manager iterating an array, paired with the significance
   manager to spend a fixed budget on the most important N.
 - **Blueprint cost is nodes x instances x frames.** Move the loop to C++, keep the decision in

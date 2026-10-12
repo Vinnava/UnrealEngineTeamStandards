@@ -9,12 +9,13 @@ tests are what caught that, and they stay so it cannot happen quietly again.
 """
 
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+from release_copy import copy_release
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -23,7 +24,7 @@ class RepoCopy:
     def __init__(self) -> None:
         self._dir = tempfile.TemporaryDirectory()
         self.root = Path(self._dir.name) / "repo"
-        shutil.copytree(REPO, self.root, ignore=shutil.ignore_patterns(".git", "__pycache__"))
+        copy_release(self.root)
 
     def edit(self, relative: str, old: str, new: str) -> None:
         path = self.root / relative
@@ -91,9 +92,24 @@ class CheckStandardTests(unittest.TestCase):
 
     def test_always_loaded_set_over_budget(self):
         padding = "\n" + ("Padding sentence that exists only to push the file over budget. " * 2000) + "\n"
-        path = self.repo.root / "rules/09-architecture.md"
+        path = self.repo.root / "rules/17-gate.md"
         path.write_text(path.read_text(encoding="utf-8") + padding, encoding="utf-8")
         self.assertFails("always-loaded set is")
+
+    def test_rule_group_over_budget(self):
+        padding = "\n" + ("Padding sentence that exists only to push the group over budget. " * 500) + "\n"
+        path = self.repo.root / "rules/24-save-data.md"
+        path.write_text(path.read_text(encoding="utf-8") + padding, encoding="utf-8")
+        self.assertFails("rule group 'save' is")
+
+    def test_rule_file_nothing_loads(self):
+        (self.repo.root / "rules/28-orphan.md").write_text("# 28. Orphan\n\n### 28.1 Nothing loads this\n",
+                                                          encoding="utf-8")
+        self.assertFails("rules/28-orphan.md: no rule group, skill or reader")
+
+    def test_readme_always_loaded_list_drifts_from_the_kit(self):
+        self.repo.edit("README.md", "`00-core`, `14-15-practice` and `17-gate`", "`00-core` and `17-gate`")
+        self.assertFails("README.md always-loaded list")
 
     def _release(self, version: str, bullet: str) -> None:
         """Adds a changelog entry above the current one and moves README and template to match."""

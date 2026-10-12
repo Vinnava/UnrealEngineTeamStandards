@@ -8,8 +8,8 @@ class UStaticMesh;
 class UTexture;
 
 /**
- * Fails content under the project content root that breaks the checkable rules in standard 23:
- * textures that cannot stream or exceed the size budget, and heavy non-Nanite meshes with no LODs.
+ * Fails content under the project content root that breaks the checkable rules in standard 23: textures that
+ * cannot stream, exceed the size budget or contradict their map-type suffix, and heavy non-Nanite meshes with no LODs.
  */
 UCLASS(Config = Editor)
 class UAssetContentValidator : public UProjectValidatorBase
@@ -31,6 +31,9 @@ private:   // Functions
 
 	/** Fails a non-Nanite static mesh over lodTriangleThreshold that has a single LOD */
 	EDataValidationResult ValidateStaticMesh(const UStaticMesh& mesh);
+
+	/** Why the map-type suffix (23.1) contradicts the compression or sRGB; empty when it agrees or there is none */
+	FText DescribeSuffixMismatch(const UTexture& texture) const;
 
 protected: // Functions
 	/** Textures and static meshes under the content root only */

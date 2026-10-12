@@ -9,7 +9,9 @@ version and file index agree with reality - the drift a standard accumulates whe
 stated in five places.
 """
 
+import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -25,8 +27,20 @@ errors: list[str] = []
 warnings: list[str] = []
 
 
+def repo_files() -> list[Path]:
+    """Every file the repository would commit, so an IDE folder or a local scratch file is never checked.
+
+    In a git checkout that is what git lists, ignore rules applied - as verify-standard.py does.
+    """
+    if (ROOT / ".git").exists():
+        listed = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+                                cwd=ROOT, capture_output=True, text=True, check=True).stdout.splitlines()
+        return sorted(ROOT / name for name in dict.fromkeys(listed) if (ROOT / name).is_file())
+    return sorted(p for p in ROOT.rglob("*") if p.is_file() and ".git" not in p.parts)
+
+
 def markdown_files() -> list[Path]:
-    return sorted(p for p in ROOT.rglob("*.md") if ".git" not in p.parts)
+    return [p for p in repo_files() if p.suffix == ".md"]
 
 
 def strip_code(text: str) -> str:
@@ -87,9 +101,7 @@ def check_links() -> None:
 
 def check_encoding() -> None:
     """5.5 - no emojis, no U+FFFD, and nothing non-ASCII that a tool will mangle."""
-    for path in sorted(ROOT.rglob("*")):
-        if ".git" in path.parts or not path.is_file():
-            continue
+    for path in repo_files():
         if path.suffix not in {".md", ".h", ".cpp", ".cs", ".py", ".ini", ".yml", ".clang-tidy", ""}:
             continue
         try:
@@ -213,8 +225,13 @@ def check_version_policy() -> None:
 
 # The always-loaded import set (README, "Giving this to an AI assistant") is paid on every assistant
 # request. Growth past this budget is a decision to make on purpose, not something that drifts in.
-ALWAYS_LOADED_BUDGET_TOKENS = 22000
-CHARS_PER_TOKEN = 4                              # the usual English-prose estimate; used consistently
+# Until 4.1.0 it held nine files; the rest now load by path or by task (27.1).
+ALWAYS_LOADED_BUDGET_TOKENS = 8000
+# Measured, not assumed: these rule files - tables, code, bold and section numbers - run about 2.5
+# characters a token in Claude Code sessions (4.1.0: the three always-loaded files added 5,753 tokens
+# for 14,519 characters). The usual prose figure of 4 under-counted every budget by 40 per cent.
+CHARS_PER_TOKEN = 2.5
+RULE_GROUPS = ROOT / "tooling" / "claude" / "rule-groups.json"
 
 
 def always_loaded_tokens() -> int | None:
@@ -229,7 +246,7 @@ def always_loaded_tokens() -> int | None:
         if not path.exists():
             errors.append(f"README.md: the always-loaded list names {name}, which is not a rule file")
             continue
-        total += len(path.read_text(encoding="utf-8")) // CHARS_PER_TOKEN
+        total += int(len(path.read_text(encoding="utf-8")) / CHARS_PER_TOKEN)
     return total
 
 
@@ -238,6 +255,54 @@ def check_token_budget() -> None:
     if total is not None and total > ALWAYS_LOADED_BUDGET_TOKENS:
         errors.append(f"always-loaded set is {total:,} tokens, over the {ALWAYS_LOADED_BUDGET_TOKENS:,} budget - "
                       f"move material to an on-demand file, or raise the budget deliberately in check-standard.py")
+
+
+def rule_tokens(name: str) -> int:
+    return int(len((ROOT / "rules" / f"{name}.md").read_text(encoding="utf-8")) / CHARS_PER_TOKEN)
+
+
+def check_rule_groups() -> None:
+    """The Claude kit's loading map (27.1): every rule file reachable, every group within its budget.
+
+    A rule file no group, skill or reader names would never reach an assistant - the failure 1.7 had
+    with the pillars, one level down.
+    """
+    try:
+        data = json.loads(RULE_GROUPS.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as problem:
+        errors.append(f"tooling/claude/rule-groups.json: unreadable ({problem})")
+        return
+    existing = {path.stem for path in (ROOT / "rules").glob("*.md")}
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    bullet = re.search(r"\*\*Every project:\*\*(.*?)(?=\n- |\n\n)", readme, re.S)
+    listed = re.findall(r"`([0-9][0-9][\w-]*)`", bullet.group(1)) if bullet else []
+    if sorted(listed) != sorted(data.get("always", [])):
+        errors.append(f"README.md always-loaded list {listed} differs from rule-groups.json 'always' {data.get('always')}")
+
+    seen = {name: "always" for name in data.get("always", [])}
+    for group in data.get("groups", []):
+        total = 0
+        for name in group["rules"]:
+            if name not in existing:
+                errors.append(f"tooling/claude/rule-groups.json: group '{group['name']}' names {name}, which is not a rule file")
+                continue
+            if name in seen:
+                errors.append(f"tooling/claude/rule-groups.json: {name} is in both '{seen[name]}' and '{group['name']}'")
+            seen[name] = group["name"]
+            total += rule_tokens(name)
+        if total > group.get("budget_tokens", 0):
+            errors.append(f"rule group '{group['name']}' is {total:,} tokens, over its {group.get('budget_tokens', 0):,} "
+                          f"budget in tooling/claude/rule-groups.json - move material out, or raise it deliberately")
+
+    in_skills = set()
+    for skill in (ROOT / "tooling" / "claude" / "skills").glob("*/SKILL.md"):
+        in_skills |= set(re.findall(r"\{\{INCLUDE rules/([\w-]+)\.md\}\}", skill.read_text(encoding="utf-8")))
+    reachable = set(seen) | in_skills | set(data.get("read_otherwise", {}))
+    for name in sorted(existing - reachable):
+        errors.append(f"rules/{name}.md: no rule group, skill or reader in tooling/claude/ loads it (27.1)")
+    for name in sorted(in_skills - existing):
+        errors.append(f"tooling/claude/skills: a skill includes rules/{name}.md, which does not exist")
 
 
 def rel(path: Path) -> str:
@@ -258,6 +323,7 @@ def main() -> int:
     check_index()
     check_version_policy()
     check_token_budget()
+    check_rule_groups()
 
     for warning in warnings:
         print(f"warning: {warning}")

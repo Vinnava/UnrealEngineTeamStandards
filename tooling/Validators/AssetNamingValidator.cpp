@@ -256,14 +256,15 @@ bool UAssetNamingValidator::FindRequiredPrefixes(
 		}
 	}
 
-	// A prototype or test Blueprint is named BP_TEMP_ / WBP_TEMP_ whatever its parent class (8.2)
-	if (outPrefixes[0].StartsWith(TEXT("BP_"), ESearchCase::CaseSensitive))
-	{
-		outPrefixes.AddUnique(TEXT("BP_TEMP_"));
-	}
-	else if (outPrefixes[0] == TEXT("WBP_"))
+	// A prototype or test Blueprint is named BP_TEMP_ / WBP_TEMP_ whatever its parent class (8.2) -
+	// an ability, effect, cue or AnimBP included, not only the parents whose own prefix starts BP_
+	if (outPrefixes[0] == TEXT("WBP_"))
 	{
 		outPrefixes.Add(TEXT("WBP_TEMP_"));
+	}
+	else if (IsValid(asset) && asset->IsA<UBlueprint>())
+	{
+		outPrefixes.AddUnique(TEXT("BP_TEMP_"));
 	}
 
 	// Longest first, so BP_TEMP_ is tested before BP_. Matching BP_ against BP_TEMP_thing would put the

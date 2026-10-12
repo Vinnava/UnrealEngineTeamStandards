@@ -1,0 +1,48 @@
+{
+  "model": "opusplan",
+  "modelSettings": {
+    "claude-opus-5-5": { "effortLevel": "high" },
+    "claude-sonnet-5-5": { "effortLevel": "medium" }
+  },
+  "plansDirectory": ".claude/plans",
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "{{PYTHON}} {{STANDARDS}}/tooling/claude/statusline.py"
+  },
+  "permissions": {
+    "allow": [
+      "Bash({{PYTHON}} {{STANDARDS}}/tooling/claude/scripts/*)",
+      "Bash({{PYTHON}} {{STANDARDS}}/tooling/check-project.py *)",
+      "Bash({{PYTHON}} {{STANDARDS}}/tooling/verify-standard.py*)",
+      "Bash({{PYTHON}} {{STANDARDS}}/tooling/claude/install.py --check*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "{{PYTHON}}", "args": ["${CLAUDE_PROJECT_DIR}/{{STANDARDS}}/tooling/claude/hooks/guard_standards.py"], "timeout": 15 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "{{PYTHON}}", "args": ["${CLAUDE_PROJECT_DIR}/{{STANDARDS}}/tooling/claude/hooks/post_edit.py"], "timeout": 30 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "{{PYTHON}}", "args": ["${CLAUDE_PROJECT_DIR}/{{STANDARDS}}/tooling/claude/hooks/stop_gate.py"], "timeout": 60 }
+        ]
+      }
+    ]
+  }
+}

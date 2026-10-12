@@ -42,26 +42,23 @@ is in [why.md](../why.md).
 - The same calibration applies to anything hard to reverse: a batch rename, a refactor across many
   files, anything touching content.
 - **You own the output.** Read every line an assistant wrote before committing it.
-- **Every rule applies identically to assistant-written code.** Give the assistant the rule files
-  (README) so it starts from the standard.
+- **Every rule applies identically to assistant-written code.** Give the assistant the standard - for
+  Claude Code, through the kit (27) - so it starts from the rules.
 - **Never commit a large diff you did not understand.**
 
 ### 14.3 Source control
 
-- **Binary assets go through Git LFS** - `.uasset`, `.umap`, source art and audio - configured in
-  `.gitattributes` before the first asset is committed.
-- **Lock a `.uasset` or `.umap` before you edit it** (`git lfs lock`, or the editor's source-control
-  integration).
+- **Any system, set up before the first asset:** binary assets in a store built for them, exclusive
+  locks on `.uasset` / `.umap`, generated folders ignored. Choosing, per-system setup and pinning this
+  standard: section 26.
+- **Lock a `.uasset` or `.umap` before you edit it.**
 - **Fix up redirectors after a move or rename** (right-click the folder > Fix Up Redirectors) and commit
   the fix-up with the move. The naming validator warns on every redirector it finds until you do.
-- **Never commit** `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` or `.vs/`.
-- **Git + LFS with locking for a small, engineering-led team; Perforce with exclusive checkout for a
-  team with artists editing daily.** Decide in the README. Keep feature branches short.
-- **One File Per Actor** ends level merge conflicts and creates thousands of small files; budget for
-  that on Git.
+- **Never commit** `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/`, `.vs/`, or the
+  per-machine files 26.1 lists.
 - **Rename a C++ class or property with a Core Redirect in the same commit** (3.8).
-- **Commit messages:** an imperative summary under 72 characters, prefixed by the system -
-  `Quest: Reset transition phase on map arrival`. One logical change per commit.
+- **Commit messages,** whatever the system calls a commit: an imperative summary under 72 characters,
+  prefixed by the system - `Quest: Reset transition phase on map arrival`. One logical change per commit.
 - **The body is a `*` bullet list**, after a blank line: one short line per bullet, saying what
   changed, why when it is not obvious, and what was tested. No prose paragraphs. A one-line change
   needs no body.
@@ -94,7 +91,7 @@ Every gate fails the build.
 
 | Tier | Time | Contents |
 |---|---|---|
-| Every commit | ~10 min | Compile (editor and game), automation tests - every save fixture included (24.6) - asset validators (18), reference budget check, documentation consistency (`tooling/check-standard.py`) |
+| Every commit | ~10 min | Compile (editor and game), automation tests - every save fixture included (24.6) - asset validators (18), reference budget check, the pinned standard verified (26.4) |
 | Nightly | 1-2 h | Cook and package, dedicated server build, perf and memory against budget (13.9), functional tests |
 | Weekly | Longer | Test and Shipping builds on every platform, a full clean cook |
 

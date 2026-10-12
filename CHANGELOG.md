@@ -1,5 +1,142 @@
 # Changelog
 
+**4.1.0 - 2026-10-12**
+
+**Source control without git, a generic content pipeline, a Claude Code kit, and the 4.0.0 claims
+checked.** A minor version: everything here is new or a correction, and a project that met 4.0.0
+still meets 4.1.0.
+
+- **New section 27, [AI assistants: Claude Code](rules/27-ai-assistants.md)**, and the kit in
+  `tooling/claude/` that sets a project up for it: what loads when (27.1), a workflow sized to the
+  task - `opusplan` as the project default, a fresh session for large work (27.2) - four task agents
+  (27.3), the checks Claude runs on its own work (27.4), session habits (27.5) and measuring (27.6).
+- **The always-loaded set is now `00-core`, `14-15-practice` and `17-gate`: about 5,800 tokens, down
+  from about 35,000.** The installer (`tooling/claude/install.py`) turns every other rule file into a
+  rule Claude Code loads the first time it touches a matching path, or a skill loaded by task, from the
+  map in `tooling/claude/rule-groups.json`. The budget drops from 22,000 to 8,000, each rule group has
+  its own, and `check-standard.py` now fails a rule file that nothing loads. The project template
+  imports the three files and no longer lists the rest.
+- **Fixed: token budgets counted 4 characters a token; these files run 2.5.** Measured in Claude Code
+  sessions, the three always-loaded files cost 5,753 tokens, not the 3,629 `check-standard.py`
+  reported. It now counts at 2.5, and every budget was multiplied by 1.6 - the same character limits,
+  in true tokens. The older figures in this changelog (22,000 and below) are in the old unit.
+- **Hooks:** `check-project.py` on every file Claude edits (its new `--files` mode), a refusal to edit
+  the pinned standard, and a Stop gate that keeps Claude working once while an edited file has errors.
+  **Scripts:** `ue_build`, `ue_validate`, `ue_log` and `ue_engine`, which print only what matters and
+  find the engine from the launcher's own install list - the registry misses 5.8 launcher installs.
+  **Agents:** ue-implementer, ue-reviewer, ue-engine-source (with memory per engine version) and
+  ue-runner. **Skills:** `/ue-plan`, `/ue-implement`, `/ue-gate`, `/ue-conflict`, `/ue-new-class`,
+  `/ue-commit-msg`, `/ue-save-version`, `/ue-upgrade-engine`, `/ue-upgrade-standard`, and knowledge
+  skills for async, performance, engine traps, content and source control. A status line shows context
+  fill and cache hits.
+- **27.8: the editor connection, optional per project.** UE 5.8's experimental Unreal MCP server and
+  Epic's Claude Code plugin (`unreal-engine-skills-for-claude-code`) let Claude see and change assets
+  in the running editor. `install.py --editor-mcp` enables the plugin for everyone; 27.8 covers turning
+  it on, the data terms the plugin itself warns about, its local-only, unauthenticated server, and
+  that an editor change is not undone by `/rewind`. The kit also enables the `clangd-lsp` plugin.
+- **Tested by `tooling/tests/test_claude_kit.py`** - installer, hooks and filters in a vendored scratch
+  project. **Proven in Claude Code 2.1.296 sessions (27.7):** rule groups load only for matching files
+  (C++ rules on the first `.cpp`, section 24 with a save class, nothing for a text file); hook
+  arguments expand `${CLAUDE_PROJECT_DIR}` - the guard refused an edit to the pinned copy, the edit
+  hook reported `LogTemp` in 114 ms, the Stop gate blocked once and then let the turn end; plans land
+  in the project's `.claude/plans/`; `opusplan` runs plan mode on Opus and the build on Sonnet in one
+  session; `enabledPlugins` in project settings turns clangd-lsp on over a user-level off. Per-model
+  effort is consistent with `modelSettings` applying - more thinking at `xhigh` than `low` - but not
+  proven. **On ZWS:** each session starts 29,600 tokens smaller, a config question cost 54 per cent
+  less and a C++ review 12 per cent less (one run each, same model), and clangd reports 0 false diagnostics across its 34 source files - and found one real missing
+  include.
+- **New `tooling/.clangd`, copied to the project root (27.4).** Without it clangd stops at the first
+  Unreal log macro - an invalid token paste MSVC accepts - and a clean UE 5.8 file shows about twenty
+  false errors, which Claude reads as real compile errors. It also turns off clangd's unused-include
+  check, which does not know Unreal's include model. 26.1 adds the per-machine files - the compile
+  database, clangd's `.cache/` index and `.claude/settings.local.json` - to what the ignore file holds.
+- **Fixed: the compile-database command in `tooling/README.md` failed on UE 5.8.** UBT's
+  `GenerateClangDatabase` forces the Clang toolchain unless a compiler is named, and writes to the
+  engine folder unless told otherwise; the command now passes `-Compiler=VisualStudio2022` and
+  `-OutputDir=<project>`.
+- **Fixed: `.clang-tidy` flagged two names on every log line** - `LOG_Static` and `LOG_Dynamic`, locals
+  the engine's `UE_LOG` and `UE_LOGFMT` macros declare. Both are now ignored by name; any other
+  mis-cased local is still reported.
+- **Fixed: 3.12 put cameras in `TG_PostUpdateWork`**, where a camera moved lags a frame: the camera
+  manager updates after `TG_PostPhysics` and before that group (`LevelTick.cpp`, 5.7 and 5.8).
+  Anything that moves the camera now ticks by `TG_PostPhysics`. Found on ZWS; added to 22.2.
+- **Fixed: project facts had two homes.** Replication (11.1, 11.8, 18.1), the frame budget (13.2),
+  the engine cadence (22.1) and canonical examples (18.5) go in the project's `CLAUDE.md`, where the
+  template, 00-core and the kit already put them - not in its README.
+- **14.3 names the per-machine files** 26.1 lists. **26.3's Diversion row** records its ignore file,
+  `.dvignore`, from ZWS; locking stays unverified. **17.2 gains a Platforms list and a 24.8 item**,
+  and the ue-reviewer agent a `platforms` checklist.
+- **Fixed: 25.1 gave `UAbilitySystemComponent` as the parent of a `BP_AC_` ASC Blueprint**, which the
+  editor refuses - the class is not `Blueprintable` in 5.7 or 5.8. The parent is the project's own
+  `U<Project>AbilitySystemComponent`. Found by running the validator harness, which had passed its
+  ASC cases without creating them: it now fails when an asset cannot be made, checks every passing
+  asset exists, and builds the ASC Blueprints on a `Blueprintable` class in its own `NamingCheckGas`
+  module, so the validators still build without GAS.
+- **Fixed: `check-standard.py` scanned files git ignores**, so an IDE folder failed it on a
+  developer's machine. It now checks what git would commit, as `verify-standard.py` does, and the
+  tests copy the repository the same way; `.gitignore` covers IDE folders.
+
+- **New section 28, [Cross-platform, patches and DLC](rules/28-cross-platform.md)**, loaded with
+  platform code, platform config and Game Feature plugins (a new `platform` rule group). One mainline
+  with platform code behind interfaces (28.1); platform services and store IDs behind project-owned
+  subsystems (28.2); input and UI on every shipped device (28.3); budgets per device tier (28.4); one
+  asset scaled per platform (28.5); config, not code (28.6); app lifecycle (28.7); build and verify on
+  the lowest tier (28.8); versions, release-based patches, chunks and DLC (28.9). Engine names were
+  checked in 5.7 and 5.8 source and added to 22.2; store delivery is marked unverified.
+- **New 24.8, saves across platforms and cloud services** - stable IDs, a header with a checksum,
+  atomic writes with a backup, separate settings saves, cloud saves through the save subsystem. The
+  save rule group's budget rises from 4,800 to 5,600 tokens to carry it.
+- **The project template gains "Cross-platform rules"** - targets, device tiers with budget TODOs, the
+  build and cook commands, folder owners, chunks and cloud-save policy - **and "What Claude must NOT
+  do"**, twelve one-line prohibitions with their sections. 174 lines; the always-loaded imports are
+  unchanged.
+- **2.1 adds a `VFX/` folder** for technical art, and **26.2 says one mainline serves every platform** -
+  never a per-platform branch.
+
+- **New section 26, [Source control](rules/26-source-control.md)**, on demand. It states what any
+  system must provide (26.1), how to choose one (26.2), how Git + LFS, Gitea, Perforce, Plastic SCM
+  and Diversion each provide it - every row but Git's marked unverified until a project runs it
+  (26.3) - and how a project pins this standard (26.4). **14.3 now states only what holds on every
+  system** and points to 26; 18.1, the README, the project template and the pilot plan no longer
+  assume git. Not a rule change: Git LFS and a submodule still comply - they are now one way, not the
+  only way.
+- **A vendored copy is the default way to pin the standard**, and every release ships
+  `MANIFEST.sha256`. New `tooling/verify-standard.py` proves a project's copy is the release it claims,
+  unedited, on any source control; 18.2 and the template put it in the every-commit tier. CI gains a
+  job that fails when the manifest lags the tree.
+- **Section 23 covers the whole content pipeline**, not only what is engine-verified. New 23.4
+  (source art), 23.5 (materials), 23.6 (skeletal meshes and animation), 23.7 (design data) and 23.8
+  (budgets and review); 23.1 to 23.3 gain texture map-type suffixes, collision and socket naming,
+  export rules, level splits and no gameplay logic in a Level Blueprint. Every rule is tagged
+  **[engine]**, **[tool]** or **[convention]**; conventions stand until a project has leads to review
+  them. **New 19.10** covers audio import on the same footing.
+- **`AssetContentValidator` checks texture suffixes** (23.1): an `_N` must be Normalmap, a `_D` sRGB,
+  an `_ORM` or `_M` not sRGB.
+- **Fixed: `BP_TEMP_` was rejected on any Blueprint whose own prefix does not start `BP_`** - abilities,
+  effects, cues and AnimBPs - though 8.2 and the tooling README said it was accepted whatever the
+  parent. Found by writing the GAS harness cases.
+- **The two GAS engine claims are now checked against 5.7 and 5.8 source, and one was wrong.** A cue
+  tag is derived from the asset name in every editor process - commandlets and the cook included -
+  not "only in an interactive editor", and an unregistered derived tag stays empty without an error
+  (25.1, 22.2). Attribute table rows are confirmed, with two refinements: an inherited attribute's row
+  uses the declaring class, and a skipped row keeps the constructor value rather than zero (25.4).
+  The collision and socket import prefixes in 23.2 join 22.2.
+- **Validator harness**: the GameplayAbilities plugin is enabled, so the GAS prefixes run, not only
+  compile - a passing and a failing ability, effect, static cue, burst cue, actor cue, looping cue and
+  ability system component, plus `BP_TEMP_Dash`. A component without the infix is now `BP_Health`
+  rather than the retired `BPC_` name, and a normal map case covers the suffix check. 28 assets under
+  the content root, 12 expected errors. **Run for this release on UE 5.7 and 5.8: every check
+  passes** (tooling/README.md, "Proving the validators work").
+- **camelCase (4.1) is decided by the owner**, not by a team vote: with one developer there is no team
+  to vote. The reasoning is in why.md; it is revisited when a second developer joins. why.md also no
+  longer tells a project to record an override in its README - overrides live in `CLAUDE.md` (00-core).
+- **`main` is protected by GitHub rulesets**, not by a code-owner review the owner cannot give
+  themselves: every CI job must pass on the commit that lands, force-pushes and deletion are blocked,
+  and release tags cannot be moved. `.github/CODEOWNERS` is deleted until a second maintainer joins.
+- **The pilot plan fits a solo owner**: the pilot project is recorded in that project, not here; the
+  camelCase vote and the leads for section 23 become conditional; onboarding is measured only if
+  someone joins.
+
 **4.0.0 - 2026-10-07**
 
 **Blueprint class naming and GAS naming.** A major version because one prefix changes; everything
@@ -117,7 +254,7 @@ on ([PILOT.md](PILOT.md)). From here, releases follow semantic versioning (READM
 
 Governance - the standard had no owner, no release discipline and no evidence from real use:
 
-- **A named owner**, in the README, with [`.github/CODEOWNERS`](.github/CODEOWNERS) requesting their
+- **A named owner**, in the README, with `.github/CODEOWNERS` (deleted in 4.1.0) requesting their
   review on every pull request and a quarterly duty list. Until now "it has an owner" pointed at each
   project's README, so nobody was named.
 - **Semantic versioning, with tags.** A project pins a release as a submodule, not a branch. A release

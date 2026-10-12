@@ -7,7 +7,7 @@ Where a project has to pin something down - its module name, content root or sho
 standard uses a `<Project>` placeholder, and that project's `CLAUDE.md` fills it in - from
 [`tooling/project-template/`](tooling/project-template/).
 
-**Version 4.0.0** - see the [changelog](CHANGELOG.md). **Owner: @Vinnava** ("Ownership" below). Written against **Unreal Engine 5.x**. Every
+**Version 4.1.0** - see the [changelog](CHANGELOG.md). **Owner: @Vinnava** ("Ownership" below). Written against **Unreal Engine 5.x**. Every
 claim about engine behaviour was checked against **UE 5.7** source, and the defaults that matter
 were re-checked in **5.8**. Where a rule depends on the engine version, it says so.
 
@@ -23,12 +23,13 @@ were re-checked in **5.8**. Where a rule depends on the engine version, it says 
   incidents behind them. It is for people. Read it when a rule looks arbitrary, and before you change
   one.
 - **[`tooling/`](tooling/README.md)** - what enforces the mechanical rules: `.clang-format`,
-  `.clang-tidy`, `.editorconfig`, two asset validators, a project checker, a consistency checker for
-  this repository, and the project templates. Every one of them has been run for real - the validators
+  `.clang-tidy`, `.editorconfig`, two asset validators, a project checker, a verifier that proves a
+  project's copy of the standard is unedited, the Claude kit (27), a consistency checker for this
+  repository, and the project templates. Every one of them has been run for real - the validators
   compiled against UE 5.7 and run in a headless editor on assets built to pass and to fail - and
   [`.github/workflows/standard.yml`](.github/workflows/standard.yml) gates every push.
-- **[PILOT.md](PILOT.md)** - how 2.0.0 goes from written to proven: one project, one milestone,
-  measured.
+- **[PILOT.md](PILOT.md)** - how the standard goes from written to proven: one project, one
+  milestone, measured.
 
 **Section numbers are global and stable, and every file is named for the sections it holds.** "(3.12)"
 means section 3.12, and it is in `rules/03-cpp.md`. A file covering more than one section carries the
@@ -59,6 +60,9 @@ span: `rules/05-06-comments-logging.md`. There is no second numbering scheme to 
 | 23 | [rules/23-content-pipeline.md](rules/23-content-pipeline.md) | Before you import a texture, mesh or level |
 | 24 | [rules/24-save-data.md](rules/24-save-data.md) | Before you change anything a save file holds |
 | 25 | [rules/25-gas.md](rules/25-gas.md) | Only if the project uses GAS |
+| 26 | [rules/26-source-control.md](rules/26-source-control.md) | Choosing or setting up source control; pinning or upgrading this standard |
+| 27 | [rules/27-ai-assistants.md](rules/27-ai-assistants.md) | When a project adopts the Claude kit, or Claude Code changes |
+| 28 | [rules/28-cross-platform.md](rules/28-cross-platform.md) | More than one platform or store; before a release, a patch or a DLC |
 
 **Lost, or something is behaving impossibly?** Go straight to the debugging playbook in
 [rules/14-15-practice.md](rules/14-15-practice.md) (section 15). It is the highest-value page here on an
@@ -78,29 +82,31 @@ assistant the rules without the thing that decides between them.
 
 ## Giving this to an AI assistant
 
-Import only the files a project needs. These are **file** names from the table above; a number in
+The standard is set up for **Claude Code** - section 27 and the kit in
+[`tooling/claude/`](tooling/claude/). These are **file** names from the table above; a number in
 prose is always a section.
 
-- **Always, in every project, first:** `00-core`. Without it the assistant has the rules and nothing
-  to resolve them with - no pillars, no precedence order, no `<Project>` convention.
-- **Every project:** `00-core`, `01-02-layout`, `03-cpp`, `04-cpp-naming`, `05-06-comments-logging`,
-  `07-08-content-blueprint`, `09-architecture`, `14-15-practice` and `17-gate`.
-- **Add as needed:** `10-async` for async work, **`11-networking` only if the project replicates**,
-  `12-ui` for UI, `13-performance` for performance work, `16-engine-traps` as a reference before
-  touching a named system, `19-audio` for audio, `20-accessibility` for player-facing text and UI,
-  **`21-online` only if the project talks to a backend**, `22-upgrades` at upgrade time,
-  `23-content-pipeline` for content work, `24-save-data` before changing anything a save holds,
-  **`25-gas` only if the project uses GAS**.
-- **Not in the always-loaded set:** `17-review` is read when reviewing, `18-adopting` once when a
-  project starts. Both are large and neither is needed while writing code - loading them on every
-  request costs context that the twelve-item gate in `17-gate` already covers.
-- **The always-loaded set has a budget: 22,000 tokens.** `tooling/check-standard.py` fails the build
-  when a change pushes the set above it, so growth is a decision made on purpose - a new
-  always-loaded rule replaces something, moves to an on-demand file, or raises the budget in the same
-  pull request, with the reason.
+- **Every project:** `00-core`, `14-15-practice` and `17-gate` - imported by the project's
+  `CLAUDE.md`, so loaded in every session. Without the first of them the assistant has the rules and
+  nothing to resolve them with - no pillars, no precedence order, no `<Project>` convention.
+- **Everything else loads when it applies.** The kit's installer (27.7) turns the other rule files into
+  rules Claude Code loads the first time it touches a matching file - the C++ files load with the
+  first header, `24-save-data` with the first save class - and into skills loaded when the task calls
+  for them: async, performance, engine traps, content, source control. **`11-networking` loads only
+  if the project replicates.** [`tooling/claude/rule-groups.json`](tooling/claude/rule-groups.json)
+  is the map.
+- **Read by people, not loaded:** `17-review` is read by the reviewer agent when reviewing,
+  `18-adopting` once when a project starts, `27-ai-assistants` when a project adopts the kit.
+- **With an assistant other than Claude Code,** import `01-02-layout`, `03-cpp`, `04-cpp-naming`,
+  `05-06-comments-logging`, `07-08-content-blueprint` and `09-architecture` as well, and the rest as
+  the work needs them.
+- **The always-loaded set has a budget: 8,000 tokens, and each rule group in `rule-groups.json` has
+  its own,** counted at the rate measured in Claude Code sessions - 2.5 characters a token.
+  `tooling/check-standard.py` fails the build when a change pushes one over, and when a rule file is
+  left with nothing that loads it - so growth is a decision made on purpose, with the reason, in the
+  same pull request.
 
-Reference them from the project's `CLAUDE.md` or equivalent. Leave `why.md` out of assistant context
-unless you are changing a rule.
+Leave `why.md` out of assistant context unless you are changing a rule.
 
 ## Adopting it
 
@@ -109,7 +115,7 @@ partially adopted gets wholly ignored.
 
 | Tier | When | What it buys |
 |---|---|---|
-| **1** (18.1) | Before the first feature | The decisions that are expensive or impossible to reverse: module split, content root, short name, replication, LFS before the first asset |
+| **1** (18.1) | Before the first feature | The decisions that are expensive or impossible to reverse: module split, content root, short name, replication, source control set up before the first asset |
 | **2** (18.2) | Before the first milestone | Production discipline: tooling, CI, budgets, validators, accessibility and audio decisions |
 | **3** (18.3) | When review alone stops working | Blueprint lint, reference budgets, perf regression gates, upgrade cadence |
 
@@ -120,13 +126,14 @@ sight, and every deliberate deviation is written down as an override.
 ## Ownership
 
 **The owner is @Vinnava.** One person decides when two readings of a rule conflict, approves every
-change, and answers for the standard staying true. [`.github/CODEOWNERS`](.github/CODEOWNERS) makes
-GitHub request the owner's review on every pull request.
+change, and answers for the standard staying true.
 
 - **While the owner is the only maintainer, `main` is protected by CI, not by review.** GitHub does not
-  let an author approve their own pull request, so requiring a code-owner review would lock the owner
-  out. Branch protection requires the `standard` workflow to pass; turn on "Require review from Code
-  Owners" when a second maintainer joins.
+  let an author approve their own pull request, so a required review would lock the owner out. Two
+  GitHub rulesets do the protecting: on `main`, a commit is accepted only once every job in the
+  [`standard`](.github/workflows/standard.yml) workflow has passed on that exact commit, and force-pushes
+  and deletion are blocked; on `v*` tags, a release cannot be moved or deleted once pushed. When a
+  second maintainer joins, add a `CODEOWNERS` file and a required review to the `main` ruleset.
 - **Every quarter, the owner:** re-runs the engine re-verification list (22.2) if the engine moved,
   promotes project traps that a second project hit into section 16, prunes rules nobody cited or
   enforced, and checks the always-loaded budget still fits.
@@ -143,8 +150,9 @@ Releases follow semantic versioning, and **a project pins a release, not a branc
 | **Minor** (`2.1.0`) | New rules or new sections, nothing existing changes meaning | At most monthly |
 | **Patch** (`2.0.1`) | Wording, examples, typos, tooling fixes | Whenever needed |
 
-- **Every release is a git tag** - `v2.0.0`. A project adds this repository as a submodule and checks
-  out a tag, so it upgrades when it chooses, not whenever `main` moves.
+- **Every release is a git tag** - `v2.0.0` - and carries `MANIFEST.sha256`, a hash of every file in it.
+  A project pins one release - a vendored copy, or a submodule on git - and verifies it in CI (26.4),
+  so it upgrades when it chooses, not whenever `main` moves, on whatever source control it uses.
 - **A changelog bullet that changes a rule's meaning starts with "Rule change:"**, and
   `tooling/check-standard.py` fails a release that carries one without a major version. A reader
   pinned to `2.x` can trust that no `2.x` release reversed a rule under them.

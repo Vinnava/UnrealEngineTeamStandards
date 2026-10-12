@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks a game project against the rules in the team standard that a text scan can decide.
 
-    python check-project.py <project-root> [--warn-only]
+    python check-project.py <project-root> [--warn-only] [--files FILE ...]
 
 check-standard.py checks this repository; this one checks a project. It scans the project's
 Source/ and Plugins/*/Source/ trees and reports, per rule:
@@ -16,6 +16,9 @@ Warnings are the checks with known false positives; they print but never fail th
 backlog can be seen before the gate is switched on.
 
 Code in a prototype module (1.6) is held only to the safety checks: TAtomic and encoding.
+
+--files checks only the files named - the Claude kit's edit hook runs it after every edit (27.4) -
+and skips the registry check, which needs the whole tree.
 """
 
 import argparse
@@ -208,8 +211,12 @@ def check_registry(marked: list[str], root: Path, report: Report) -> None:
         report.error("CLAUDE.md", f"{name} is in the registry but no class is marked {CANDIDATE_MARKER} (10.10)")
 
 
-def run(root: Path, warn_only: bool = False) -> Report:
+def run(root: Path, warn_only: bool = False, files: list[Path] | None = None) -> Report:
     report = Report(warn_only)
+    if files is not None:
+        for path in files:
+            check_file(path, root, report)
+        return report
     marked = []
     for path in source_files(root):
         marked += check_file(path, root, report)
@@ -217,10 +224,25 @@ def run(root: Path, warn_only: bool = False) -> Report:
     return report
 
 
+def selected_files(root: Path, names: list[Path]) -> list[Path]:
+    """The named files that are project source - a path outside the project, or not code, is ignored."""
+    chosen = []
+    for name in names:
+        path = (name if name.is_absolute() else root / name).resolve()
+        try:
+            relative = path.relative_to(root)
+        except ValueError:
+            continue
+        if path.suffix in SOURCE_SUFFIXES and path.is_file() and not (set(relative.parts) & SKIPPED_DIRS):
+            chosen.append(path)
+    return chosen
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check a game project against the team standard.")
     parser.add_argument("project", type=Path, help="the project root - the folder holding the .uproject")
     parser.add_argument("--warn-only", action="store_true", help="report errors as warnings and exit 0 (18.4)")
+    parser.add_argument("--files", nargs="+", type=Path, help="check only these files, skipping the registry check")
     args = parser.parse_args()
 
     root = args.project.resolve()
@@ -228,12 +250,14 @@ def main() -> int:
         print(f"{root} has no Source/ folder - pass the project root.")
         return 2
 
-    report = run(root, args.warn_only)
+    files = selected_files(root, args.files) if args.files else None
+    report = run(root, args.warn_only, files)
     for warning in report.warnings:
         print(f"warning: {warning}")
     for error in report.errors:
         print(f"error: {error}")
-    print(f"\n{len(source_files(root))} source files, {len(report.errors)} errors, {len(report.warnings)} warnings")
+    checked = len(files) if files is not None else len(source_files(root))
+    print(f"\n{checked} source files, {len(report.errors)} errors, {len(report.warnings)} warnings")
     return 1 if report.errors else 0
 
 

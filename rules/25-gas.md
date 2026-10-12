@@ -16,13 +16,17 @@ reads as one name in all of them.
 | `GA_` | Gameplay Ability Blueprint | `UGameplayAbility` | `GA_Dash`, `GA_Weapon_Fire` |
 | `GE_` | Gameplay Effect Blueprint | `UGameplayEffect` | `GE_Damage_Fire`, `GE_Cooldown_Dash` |
 | `GC_` | Gameplay Cue Notify - static, burst, actor or looping | `UGameplayCueNotify_Static`, `AGameplayCueNotify_Actor` | `GC_Damage_Fire` |
-| `BP_AC_` | Ability system component Blueprint (7.2) | `UAbilitySystemComponent` | `BP_AC_AbilitySystem` |
+| `BP_AC_` | Ability system component Blueprint (7.2) | The project's `U<Project>AbilitySystemComponent` (25.3) | `BP_AC_AbilitySystem` |
 | `DA_` | Ability set, or any GAS data asset | `UPrimaryDataAsset` | `DA_AbilitySet_Guard` |
 | `DT_` | Attribute initialisation table | row type `FAttributeMetaData` | `DT_Attributes_Guard` |
 | `CT_` | Scalable-float curve table | - | `CT_DamageByLevel` |
 
 `AssetNamingValidator` enforces `GA_`, `GE_`, `GC_` and `BP_AC_` by parent class, matched by name so
 the validator links nothing from GAS.
+
+- **An ASC Blueprint derives from the project's own C++ class, declared `UCLASS(Blueprintable)`.** The
+  engine's `UAbilitySystemComponent` is not Blueprintable in 5.7 or 5.8 - the editor refuses to make a
+  Blueprint of it - so a project that wants one subclasses it first (25.3).
 
 - **An ability is named for the action the designer says.** `GA_Dash`, `GA_Interact`. A family
   shares its first segment: `GA_Weapon_Fire`, `GA_Weapon_Reload`.
@@ -40,10 +44,12 @@ the validator links nothing from GAS.
 
   `GE_Cooldown_Dash` sorts with the other cooldowns and names the ability it gates.
 - **A cue is named for its tag**, without the `GameplayCue` root, segments joined by underscores:
-  `GameplayCue.Damage.Fire` is `GC_Damage_Fire`. This is the form the editor reads back: a notify
+  `GameplayCue.Damage.Fire` is `GC_Damage_Fire`. This is the form the engine reads back: a notify
   whose cue tag is empty derives one from its asset name, stripping `GC_` and turning underscores
-  into dots. The derivation runs only in an interactive editor, so **set the cue tag explicitly
-  anyway** - the name is for people, the property is what ships.
+  into dots. It runs in every editor process - the editor, commandlets and the cook - and never in a
+  packaged game, and it only finds a tag that is already registered: if the derived tag does not
+  exist, the cue keeps an empty tag and nothing reports it. So **set the cue tag explicitly** - the
+  name is for people, the property is what ships.
 
 ### 25.2 Gameplay tags
 
@@ -118,6 +124,7 @@ ATTRIBUTE_ACCESSORS_BASIC(UHealthAttributeSet, IncomingDamage)
 - **A meta attribute is named for what is incoming:** `IncomingDamage`, `IncomingHealing`. It is
   never replicated.
 - **Rep notifies are `OnRep_<Attribute>`** (11.6).
-- **Attribute table rows are `<SetClass>.<Attribute>`**, the class without its `U`:
-  `HealthAttributeSet.MaxHealth`. That is the row name `InitFromMetaDataTable` looks up; any other
-  name is silently skipped and the attribute starts at zero.
+- **Attribute table rows are `<SetClass>.<Attribute>`**, the class that declares the attribute,
+  without its `U`: `HealthAttributeSet.MaxHealth`. An attribute inherited from a base set uses the
+  base set's name. That is the row name `InitFromMetaDataTable` looks up; any other name is silently
+  skipped and the attribute keeps its constructor value.

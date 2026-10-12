@@ -9,8 +9,8 @@ is in [why.md](../why.md).
 
 ### 11.1 Decide before the first feature
 
-- **Decide replication before the first feature** and write it in the README - "this project
-  replicates" or "this project is single-player".
+- **Decide replication before the first feature** and write it in the project's `CLAUDE.md` - "this
+  project replicates" or "this project is single-player" - and install the kit to match (27.7).
 - **Any realistic chance of multiplayer: write authority-aware code from the start**, even in a
   single-player build.
 - **Definitively single-player: skip this section** rather than half-applying it.
@@ -250,7 +250,7 @@ An RPC prefix states **where the function runs**, and is mandatory:
 ### 11.8 Push model and Iris
 
 Both are **off by default in UE 5.7 and 5.8** (`Net.IsPushModelEnabled`,
-`net.Iris.UseIrisReplication`). Decide on both alongside 11.1, and write the answer in the README.
+`net.Iris.UseIrisReplication`). Decide on both alongside 11.1, and write the answer in `CLAUDE.md`.
 
 - **Push model:** enable with `Net.IsPushModelEnabled=1` and a `NetCore` dependency, register properties
   with `DOREPLIFETIME_WITH_PARAMS_FAST` and `bIsPushBased = true`, and call

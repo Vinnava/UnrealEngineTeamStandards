@@ -74,8 +74,52 @@ EDataValidationResult UAssetContentValidator::ValidateTexture(const UTexture& te
 		return EDataValidationResult::Invalid;
 	}
 
+	const FText suffixMismatch = DescribeSuffixMismatch(texture);
+	if (!suffixMismatch.IsEmpty())
+	{
+		AssetFails(&texture, suffixMismatch);
+		return EDataValidationResult::Invalid;
+	}
+
 	AssetPasses(&texture);
 	return EDataValidationResult::Valid;
+}
+
+FText UAssetContentValidator::DescribeSuffixMismatch(const UTexture& texture) const
+{
+	const FString name = GetNameSafe(&texture);
+	int32 lastUnderscore = INDEX_NONE;
+	if (!name.FindLastChar(TEXT('_'), lastUnderscore))
+	{
+		return FText::GetEmpty();
+	}
+
+	// The map type is the last segment (23.1). A texture with none of these suffixes - a UI icon, an
+	// HDRI - is not checked, because nothing in its name says what it should be
+	const FString suffix = name.RightChop(lastUnderscore + 1);
+	if (suffix == TEXT("N") && texture.CompressionSettings != TC_Normalmap)
+	{
+		return FText::Format(LOCTEXT("SuffixNormal", "'{0}' is a normal map by its _N suffix, but its compression is "
+													 "not Normalmap (standard 23.1)."),
+			FText::AsCultureInvariant(name));
+	}
+
+	// A mask read as sRGB is subtly wrong on every surface that samples it, and nothing else reports it
+	if ((suffix == TEXT("ORM") || suffix == TEXT("M")) && texture.SRGB)
+	{
+		return FText::Format(LOCTEXT("SuffixMask", "'{0}' is a mask by its _{1} suffix, but sRGB is on. Use Masks "
+												   "compression, which turns it off (standard 23.1)."),
+			FText::AsCultureInvariant(name), FText::AsCultureInvariant(suffix));
+	}
+
+	if (suffix == TEXT("D") && !texture.SRGB)
+	{
+		return FText::Format(LOCTEXT("SuffixColour", "'{0}' is a colour map by its _D suffix, but sRGB is off "
+													 "(standard 23.1)."),
+			FText::AsCultureInvariant(name));
+	}
+
+	return FText::GetEmpty();
 }
 
 EDataValidationResult UAssetContentValidator::ValidateStaticMesh(const UStaticMesh& mesh)

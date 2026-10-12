@@ -64,6 +64,13 @@ CheckOptions:
   - key:   readability-identifier-naming.MethodIgnoredRegexp
     value: '^(OnRep_[A-Z][A-Za-z0-9]*|[A-Z][A-Za-z0-9]*_(Implementation|Validate))$'
 
+  # Locals the engine's log macros declare inside every UE_LOG / UE_LOGFMT expansion (LogMacros.h,
+  # StructuredLog.h). Without these, each log line reports two names nobody here wrote.
+  - key:   readability-identifier-naming.LocalVariableIgnoredRegexp
+    value: '^LOG_(Static|Dynamic)$'
+  - key:   readability-identifier-naming.ConstexprVariableIgnoredRegexp
+    value: '^LOG_(Static|Dynamic)$'
+
   # Constants are PascalCase, declared next to what they govern (3.7, 4.1). ConstexprVariableCase
   # covers every constexpr, a local one included - 4.1 says a constexpr name is PascalCase wherever it
   # is declared, which is what separates it from a plain const local.

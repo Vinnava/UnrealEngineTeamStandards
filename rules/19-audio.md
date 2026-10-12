@@ -91,3 +91,17 @@ twenty voices, the mix collapses, and the platform's voice limit starts stealing
   thread, per target platform, with a named owner (13.2).
 - **Mobile is the binding platform** (13.1) - voice counts there are a fraction of desktop.
 - **Audio is in the regression gate** (13.9) when the project has a voice budget worth defending.
+
+### 19.10 Import
+
+Common studio practice, written without an audio lead - the same footing as the conventions in 23,
+and changed here when a project has one.
+
+- **Import uncompressed WAV** at the project's sample rate - 48 kHz unless the README says otherwise -
+  at 16 or 24 bit. Never import an MP3 or OGG: the engine compresses again, and the loss compounds.
+- **A sound that is spatialised is mono.** Stereo is for music, ambience beds and UI.
+- **Every source is levelled to the project's loudness target** before import - a number in the audio
+  budget (19.9) - so the mix starts balanced, without per-call volume multipliers (19.4).
+- **Loops are cut at zero crossings** and checked looping in the editor, not only in the DCC.
+- **The source file carries the asset's name and lives in `SourceArt/Audio/`** (23.4), so the asset is
+  right on import (7.6) and traceable to its file.

@@ -18,8 +18,8 @@ down; doing Tier 3 before Tier 1 is how a project ends up with perfect CI and no
 **Everything here is expensive or impossible to change later.** This is the minimum for any project
 that will outlive the prototype.
 
-- [ ] **The standard added as a submodule pinned to a release tag** (`v4.0.0`), never a branch - so
-      the project upgrades when it decides to (README, "Versioning")
+- [ ] **The standard pinned to a release** (`v4.1.0`) at `standards/` - a vendored copy or a submodule,
+      never a branch - so the project upgrades when it decides to - 26.4
 - [ ] The `<Project>` game module in place. The online, editor and prototype modules are created
       the day each is first needed, not now - 1.1
 - [ ] Agreed that the first prototype starts a `<Project>Prototype` module of type `DeveloperTool`,
@@ -29,16 +29,17 @@ that will outlive the prototype.
 - [ ] Project short name pinned, for class infixes and short variable names - 4.4, 4.8
 - [ ] Log category naming pinned: `Log<Project><Domain>`, `DEFINE_LOG_CATEGORY_STATIC` by default - 6.2
 - [ ] GameplayTag root namespaces agreed - 4.10
-- [ ] **Replication decided and written down in the README** - "this project replicates" or "this
+- [ ] **Replication decided and written down in `CLAUDE.md`** - "this project replicates" or "this
       project is single-player" - 11.1
-- [ ] Version control chosen, and **Git LFS with `.gitattributes` in place before the first asset
-      commit**; locking on for `.uasset` and `.umap` - 14.3
+- [ ] **Source control chosen and set up before the first asset commit** - binary store, exclusive
+      locks on `.uasset` and `.umap`, ignore list - and the choice written in `CLAUDE.md` - 14.3, 26.2
 - [ ] A `TEMP/` or `Developers/` content folder created, so prototypes have somewhere legitimate to
       live - 8.2
 - [ ] A project **`CLAUDE.md`** from [`tooling/project-template/`](../tooling/project-template/),
-      filling in every `<Project>` placeholder, importing `00-core` plus the rule files this
-      project needs, and **holding the override table** - the assistant reads this file, not the
-      README (00-core)
+      filling in every `<Project>` placeholder and **holding the override table** - the assistant
+      reads this file, not the README (00-core)
+- [ ] **The Claude kit installed** - `standards/tooling/claude/install.py`, with `--replicates` if the
+      project replicates - so the other rule files load when they apply - 27.1, 27.7
 - [ ] A project `README.md` that links to that override table rather than keeping a second copy,
       and links back to this standard
 
@@ -49,14 +50,20 @@ retrofit.
 
 - [ ] Console command namespace pinned: `<Project>.<system>.<verb>`, lowercased - 4.11
 - [ ] [`tooling/.clang-format`](../tooling/.clang-format),
-      [`tooling/.clang-tidy`](../tooling/.clang-tidy) and
+      [`tooling/.clang-tidy`](../tooling/.clang-tidy), [`tooling/.clangd`](../tooling/.clangd) and
       [`tooling/.editorconfig`](../tooling/.editorconfig) copied to the project root, and a compile
-      database generated - 3.10, 4.1
+      database generated with the command in [tooling/README.md](../tooling/README.md) - 3.10, 4.1, 27.4
 - [ ] [`tooling/Validators/`](../tooling/README.md) installed in the project's editor module -
       `AssetNamingValidator` and `AssetContentValidator` on their shared base, with the content root
       and budgets set once in `DefaultEditor.ini` - 7.1-7.3, 23
 - [ ] [`tooling/check-project.py`](../tooling/check-project.py) in the every-commit CI tier, with
       `--warn-only` until the backlog is cleared, then failing - 14.5, 18.4
+- [ ] [`tooling/verify-standard.py`](../tooling/verify-standard.py) in the every-commit CI tier, so an
+      edited or partial copy of the standard fails the build - 26.4
+- [ ] On more than one platform: `CLAUDE.md`'s "Cross-platform rules" filled in - targets, device
+      tiers and budgets, build and cook commands, folder owners, chunk plan - 28
+- [ ] `tooling/claude/install.py --check` in the every-commit CI tier, and the `clangd-lsp` plugin set
+      up with a compile database, so Claude sees compile errors as it edits - 27.4, 27.7
 - [ ] [`tooling/project-template/PULL_REQUEST_TEMPLATE.md`](../tooling/project-template/PULL_REQUEST_TEMPLATE.md)
       copied to `.github/` - the rules no tool can check, sized like 17.1 rather than 17.2
 - [ ] Data-driven asset types registered as Primary Asset Types - 13.3
@@ -107,9 +114,9 @@ The standard is written for a new project. On an existing one:
 
 ### 18.5 Ongoing
 
-- [ ] A project-level `CLAUDE.md` or equivalent that imports the rule files the project needs (see
-      the README), so assistants follow the same rules as people
-- [ ] A **canonical examples** list in the project README: for each recurring pattern, the real class
+- [ ] The project `CLAUDE.md` kept under 200 lines and the kit refreshed after every upgrade of the
+      standard, so assistants follow the same rules as people - 27.1, 27.7
+- [ ] A **canonical examples** list in the project `CLAUDE.md`: for each recurring pattern, the real class
       that implements it well - "countdowns: follow the time-bomb timer on the ball actor"
 - [ ] A living document of project-specific decisions and traps - that project's section 16. Every
       trap you hit that is not in this standard goes there; the genuinely engine-general ones come back

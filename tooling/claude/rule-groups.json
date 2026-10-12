@@ -1,0 +1,60 @@
+{
+  "about": "Which rule files load when Claude touches which paths (27.1). install.py turns each group into path-scoped files in the project's .claude/rules/standard/; check-standard.py holds each group to its token budget. Paths are globs relative to the project root.",
+  "always": ["00-core", "14-15-practice", "17-gate"],
+  "read_otherwise": {
+    "17-review": "the ue-reviewer agent reads it for each review",
+    "18-adopting": "read by people, once, when a project starts",
+    "27-ai-assistants": "read by people when a project adopts the kit, or Claude Code changes"
+  },
+  "groups": [
+    {
+      "name": "cpp",
+      "rules": ["01-02-layout", "03-cpp", "04-cpp-naming", "05-06-comments-logging", "09-architecture"],
+      "paths": ["Source/**/*.{h,hpp,inl,cpp}", "Plugins/**/*.{h,hpp,inl,cpp}", "**/*.Build.cs", "**/*.Target.cs", "*.uproject", "Plugins/**/*.uplugin"],
+      "budget_tokens": 25600
+    },
+    {
+      "name": "networking",
+      "rules": ["11-networking"],
+      "paths": ["Source/**/*.{h,hpp,inl,cpp}", "Plugins/**/*.{h,hpp,inl,cpp}"],
+      "only_if": "replicates",
+      "budget_tokens": 5600
+    },
+    {
+      "name": "ui",
+      "rules": ["12-ui", "20-accessibility"],
+      "paths": ["Source/**/UI/**", "Plugins/**/UI/**", "**/*Widget*.{h,cpp}", "**/*HUD*.{h,cpp}"],
+      "budget_tokens": 4800
+    },
+    {
+      "name": "audio",
+      "rules": ["19-audio"],
+      "paths": ["Source/**/Audio/**", "**/*Audio*.{h,cpp}", "**/*Sound*.{h,cpp}"],
+      "budget_tokens": 3200
+    },
+    {
+      "name": "online",
+      "rules": ["21-online"],
+      "paths": ["Source/*Online/**", "Plugins/**/*Online*/**"],
+      "budget_tokens": 3200
+    },
+    {
+      "name": "save",
+      "rules": ["24-save-data"],
+      "paths": ["Source/**/Save/**", "**/*Save*.{h,cpp}", "SaveFixtures/**"],
+      "budget_tokens": 5600
+    },
+    {
+      "name": "gas",
+      "rules": ["25-gas"],
+      "paths": ["**/*Ability*.{h,cpp}", "**/*Attribute*.{h,cpp}", "**/*GameplayEffect*.{h,cpp}", "**/*GameplayCue*.{h,cpp}"],
+      "budget_tokens": 4000
+    },
+    {
+      "name": "platform",
+      "rules": ["28-cross-platform"],
+      "paths": ["Source/**/{Android,IOS,Apple,Windows,Mac,Linux}/**", "Platforms/**", "Config/{Android,IOS,Windows,Mac,Linux}/**", "Config/*DeviceProfiles.ini", "Plugins/GameFeatures/**", "**/*Platform*.{h,cpp}", "**/*Entitlement*.{h,cpp}", "**/*Achievement*.{h,cpp}"],
+      "budget_tokens": 4000
+    }
+  ]
+}

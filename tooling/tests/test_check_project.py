@@ -209,6 +209,32 @@ class CheckProjectTests(unittest.TestCase):
         self.project.write("Plugins/GameTools/Source/GameTools/Thing.cpp", "TAtomic<int32> hits;\n")
         self.assertFinding(self.project.run().errors, "Plugins/GameTools", "(10.8)")
 
+    # --- --files, the edit hook's mode (27.4) ---
+
+    def test_files_mode_checks_only_the_files_named(self):
+        self.project.write("Source/Game/Edited.cpp", "TAtomic<int32> hits;\n")
+        self.project.write("Source/Game/Untouched.cpp", "UE_LOGFMT(LogTemp, Log, \"x\");\n")
+        files = check_project.selected_files(self.project.root, [Path("Source/Game/Edited.cpp")])
+        report = check_project.run(self.project.root, files=files)
+        self.assertFinding(report.errors, "Edited.cpp", "(10.8)")
+        self.assertNoFinding(report.errors, "Untouched.cpp")
+
+    def test_files_mode_skips_the_registry_check(self):
+        self.project.write("Source/Game/Marked.h", """
+            /** THREADING-CANDIDATE */
+            class GAME_API UMarkedSubsystem : public UGameInstanceSubsystem
+            """)
+        files = check_project.selected_files(self.project.root, [Path("Source/Game/Marked.h")])
+        self.assertEqual(check_project.run(self.project.root, files=files).errors, [])
+
+    def test_files_mode_ignores_paths_that_are_not_project_source(self):
+        self.project.write("Source/Game/Intermediate/Gen.cpp", "TAtomic<int32> generated;\n")
+        self.project.write("Docs/notes.md", "TAtomic<int32> in prose\n")
+        outside = Path(tempfile.gettempdir()) / "not-in-the-project.cpp"
+        chosen = check_project.selected_files(self.project.root, [
+            Path("Source/Game/Intermediate/Gen.cpp"), Path("Docs/notes.md"), outside, Path("Source/Game/Missing.cpp")])
+        self.assertEqual(chosen, [])
+
 
 if __name__ == "__main__":
     unittest.main()

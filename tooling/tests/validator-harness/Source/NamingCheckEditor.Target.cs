@@ -8,5 +8,6 @@ public class NamingCheckEditorTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.Latest;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 		ExtraModuleNames.Add("NamingCheckEditor");
+		ExtraModuleNames.Add("NamingCheckGas");
 	}
 }

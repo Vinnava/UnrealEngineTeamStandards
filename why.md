@@ -63,6 +63,14 @@ the rules would lose what they encode. The fix was an entry point, not a diet: f
 pillars, the gate, the first debugging steps and the traps that cost new people the most, and "read
 the rest the day you need it".
 
+**Why rulesets, not a code-owner review, while there is one maintainer.** A required review is the
+usual way to protect `main`, and GitHub does not let an author approve their own pull request - so for
+a solo owner it is a lock with no key, and a `CODEOWNERS` file only asks the owner to review their own
+work, which GitHub skips. What the owner can be held to is the CI result, so the `main` ruleset requires
+every `standard` job to pass on the exact commit that lands. Tags get their own ruleset because a
+project pins a release by its tag and verifies the files against that release's manifest (26.4): a tag
+that could be moved would make "this project is on 4.1.0" mean two things.
+
 **Why the always-loaded set has a token budget.** Every always-loaded rule is paid for on every
 assistant request, forever, and each addition looks cheap on its own. A budget with a failing check
 turns "the file got a bit longer" into a decision someone makes on purpose.
@@ -168,6 +176,12 @@ component, and one NPC is often ten tick functions. That is why most tick fixes 
 than optimisation. Without staggering, a thousand actors on the same interval all fire on the same
 frame and produce a spike.
 
+*Corrected in 4.1.0:* until then 3.12 put cameras in `TG_PostUpdateWork`. A project moving its camera
+rig there saw the view lag a frame, and the engine shows why: `UWorld::Tick` updates every camera
+manager after `TG_PostPhysics` and before `TG_PostUpdateWork` (`LevelTick.cpp`, 5.7 and 5.8). Work
+that moves the camera has to finish before that update; only work that reads the final camera
+belongs after it.
+
 ---
 
 ## 4. C++ naming conventions
@@ -188,9 +202,15 @@ daily tax, and elsewhere this document says "everything else follows Epic" - so 
 it pays to know why it is different.
 
 *If a project disagrees,* the precedence order allows it: write the override in that project's
-README with this section number and the reason, and apply it wholesale. What is not allowed is
+`CLAUDE.md` with this section number and the reason, and apply it wholesale. What is not allowed is
 half a codebase each way - the cost of the deviation is paid once for consistency, and a split
 codebase pays it without buying anything.
+
+*Decided in 4.1.0, by the owner:* the pilot plan asked for a team vote, and there is no team - one
+developer, so a vote is the owner's decision under another name. It was taken as one. Switching to
+Epic's form was weighed at its cheapest moment, with one active project, and declined: the
+member-versus-accessor argument above still holds, and switching would cost that project a rename for
+no change in behaviour. It is revisited, by vote, when a second developer joins.
 
 **4.2 Booleans.** A double negative in an `if` is a bug waiting to happen.
 
@@ -617,9 +637,10 @@ every file when you already understand the plan is pure overhead, and twenty sma
 review than one coherent change. "The AI wrote it" explains nothing in a review or a post-mortem, and a
 large diff you did not understand is debugging deferred to a worse moment.
 
-**14.3** Moving assets into LFS later rewrites history. Binary assets cannot be merged, so without a
-lock the second person's work is lost. Binary assets diverge on long branches and cannot be merged
-back. The system prefix makes `git log --oneline` show what each commit touched and lets
+**14.3** Moving binaries into the right store later rewrites history on some systems and is expensive
+on all of them. Binary assets cannot be merged, so without a lock the second person's work is lost.
+The per-system detail moved to section 26 in 4.1.0, so this always-loaded rule says only what holds on
+every system. The system prefix makes `git log --oneline` show what each commit touched and lets
 `git log --grep "^Combat:"` find a system's history. Bullets are read at a glance in a log or a pull
 request; a prose body gets skipped, so the one line that mattered is missed.
 
@@ -808,6 +829,10 @@ than recommended because the failure only appears under load - twenty impacts in
 exactly the case nobody tests until it ships. The rest follows the same shape as every other system
 here: intent from gameplay, decisions in data, one owner per loop.
 
+The import rules (19.10) are conventions in the same sense as 23's: written without an audio lead, and
+changed by one. They exist because a mix is only as consistent as its sources - a compressed source
+loses quality twice, and an unlevelled one forces the per-call multipliers 19.4 forbids.
+
 ---
 
 ## 20. Accessibility and localisation
@@ -856,15 +881,27 @@ how a codebase accumulates ritual nobody can justify.
 
 ## 23. Content pipeline
 
-The section is deliberately small. Content rules written by programmers tend to be either
-unenforceable or wrong about how artists work, and both kinds teach a team that the content rules are
-optional. So 23 holds only what is verified in engine source or checked by `AssetContentValidator`,
-and says openly that the art and design leads own the rest.
+Until 4.1.0 the section held only what was verified in engine source or checked by
+`AssetContentValidator`, and left the rest to art and design leads. That was right for a team with
+leads and wrong for one without: it meant there were no content rules at all, and a solo developer or
+a small team got no help with the decisions studios make on day one - source files, master materials,
+level splits, budgets.
+
+So 23 now carries the conventions most production studios share, each tagged **[convention]**, beside
+the **[engine]** and **[tool]** rules. The tag keeps the difference visible: an engine rule is true
+whatever anyone prefers, and a convention is a sensible default a lead may change. Writing a
+programmer's guess about an artist's pipeline is the risk the old section avoided; tagging it as a
+convention, and requiring a lead's change to land here, is how this version takes that risk openly.
 
 The texture and mesh budgets are **configured, not fixed** - 4096 and 1000 are defaults, not engine
 limits - because the right number depends on the target platform, and a hard-coded budget is either
 too loose for mobile or too tight for PC. What is not configurable is that the budget exists and
 fails the build.
+
+**Why the texture suffix is checked by a tool.** Of the conventions, it is the one whose violation is
+invisible: a mask with sRGB on, or a normal map compressed as colour, looks almost right in every
+viewport and is wrong on every surface. The suffix states intent in the name, so a tool can compare
+intent with the settings - which no reviewer does reliably by eye.
 
 ---
 
@@ -932,9 +969,12 @@ manager and the Content Browser; when they share one name, it is one search.
 
 **Why `GC_` for cues.** It is the prefix the engine itself strips when it derives a cue tag from an
 asset name, so a cue named this way reads back as its own tag. `GCN_`, used in some samples, is the other
-common choice; it gains nothing here and loses that. The derivation is not relied on - it runs only in an
-interactive editor, so a cook or a commandlet would see an empty tag - which is why 25.1 says to set
-the tag explicitly as well.
+common choice; it gains nothing here and loses that. The derivation is not relied on, which is why
+25.1 says to set the tag explicitly as well. 4.0.0 said it ran only in an interactive editor; reading
+the source for 4.1.0 showed it runs in every editor process - commandlets and the cook included,
+because a commandlet is an editor process by default - and never in a packaged game. The real hazard
+is quieter: it only finds a tag that is already registered, so a cue whose derived tag does not exist
+keeps an empty tag and plays nothing, with no error.
 
 **Why effects are named purpose-first.** Effects are found by what they do far more often than by
 which ability uses them: "show me every cooldown" is a common question, "show me everything about the
@@ -949,3 +989,120 @@ loosening it for all PascalCase names.
 class picker full of engine tasks named `UAbilityTask_<Verb>`. A project task named any other way is
 the one nobody finds.
 
+**Why the ASC Blueprint has a project parent.** 4.0.0 gave `UAbilitySystemComponent` as the parent
+of a `BP_AC_` ability system component. Running the validator harness for 4.1.0 showed the editor
+refuses: the engine's class is not `Blueprintable`. The harness had passed its `BP_AC_` case anyway,
+because the asset it checked was never created - so the harness now fails when an asset cannot be
+made, and every "passes" check first proves the asset exists. A check that passes on an absent
+asset is the backspace regex of 1.8 again: it matches nothing, so nothing fails it.
+
+---
+
+## 26. Source control
+
+Until 4.1.0 the standard assumed git: 14.3 required Git LFS, 18.1 required a submodule, and the
+project template's paths assumed one. The first two projects to adopt it were on Diversion, and both
+had to write the same override - the standard's own test for promoting a project trap to a general
+rule. Projects use git, Gitea, Diversion, Plastic SCM and Perforce, and a standard tied to one of them
+is followed by those who use it and overridden by everyone else.
+
+**Why requirements and a table, not a recommended system.** What matters - binaries in a binary store,
+locks on files that cannot merge, generated folders ignored - is true on every system; how each system
+provides it is not. Stating the requirement makes the rule hold everywhere, and the table holds the
+per-system detail that changes when a vendor does.
+
+**Why unverified rows are marked.** Every other engine claim in this standard was checked. These rows
+describe systems no project here has run yet, so they are marked rather than allowed to pass as
+checked, and the first project on each system verifies its row - the same rule as an engine claim that
+cannot be re-verified (22.2).
+
+**Why a vendored copy is the default.** A submodule exists only on git. A copy of a release works on
+every system, and the two adopters were already using one. What a submodule gave for free - proof the
+copy is exactly a release - the manifest now gives on any system: `verify-standard.py` hashes every
+file against the list the release shipped. Before it, checking a vendored copy meant comparing files
+by hand on every upgrade, and a copy edited by mistake looked exactly like the real standard.
+
+---
+
+## 27. AI assistants: Claude Code
+
+Until 4.1.0 a project imported nine rule files into its `CLAUDE.md` - about 35,000 tokens - and Claude
+Code loads every import at launch. So every session paid for the C++ rules before anyone asked for
+code, including sessions about a build, a log or a level. Worse, the on-demand files were loaded only
+if someone remembered to add them: `24-save-data` reached Claude only on projects whose `CLAUDE.md`
+happened to list it.
+
+**Why path-scoped rules, not a shorter standard.** Claude Code can load a rule file the first time it
+touches a matching path. That makes the always-loaded set the three files every decision needs -
+5,800 tokens - and loads the rest exactly where it applies, the save rules with the first save class.
+On ZWS, trimming the imports to those three cut every session's starting context by 29,600 tokens,
+and a question about a config file cost 54 per cent less.
+
+**Why budgets count 2.5 characters a token.** The budgets were first set at 4, the usual figure for
+English prose. Measured in real sessions, these files - tables, code, bold, section numbers - run
+about 2.5, so every budget under-counted by 40 per cent and the always-loaded set looked like 3,600
+tokens when it cost 5,750. The fix kept each budget's character limit and corrected only its unit:
+every budget was multiplied by 1.6, so no rule had to move to make the numbers true.
+A terse "assistant copy" of each rule would have saved more, and created two sources of truth that
+drift apart; the installer generates the path-scoped files from the one copy instead, and `--check`
+keeps them identical.
+
+**Why `opusplan`, and why a fresh session for large work.** The decisions that make or break a change
+- architecture, ownership, a `CONFLICT` - are judgment, where the stronger model earns its price; the
+writing is execution, where Sonnet does well at half the price. But each switch between them re-reads
+the whole conversation uncached, and a builder that inherits a long exploration pays for all of it on
+every turn. A self-contained plan in a fresh session costs less and focuses better, which is also what
+Claude Code's own guidance recommends.
+
+**Why four task agents and no role agents.** An agent starts cold and spends its own tokens; it saves
+only the main context. That pays for a big read with a small answer - a log, an engine search, a
+review from a fresh context - and not for a "gameplay programmer" agent that duplicates the main
+session. Roles survive as reviewer checklists. The reviewer is told to report only what affects
+correctness, because a reviewer asked to find gaps always finds some.
+
+**Why hooks and scripts before attention.** A rule in `CLAUDE.md` is a request; a hook is enforcement,
+and a command hook costs no tokens unless it reports. A script that turns a 5,000-line build log into
+its errors is deterministic and free; asking a model to read the log is neither. The check ladder -
+hook, clangd, build, validators, tests - exists because Claude stops when the work looks done, and
+"looks done" is the only signal it has without one.
+
+**Why the kit records what it cannot test.** The installer, hooks and filters are unit-tested; what
+Claude Code does with them is not something a unit test can show. 27.7 lists those behaviours, the way
+22.2 lists engine claims, so they are proven in a real session and re-proven when Claude Code changes.
+
+**Why the editor connection is optional (27.8).** It removes the biggest limit on Claude in an Unreal
+project - assets are binary, and without it Claude reaches them only through scripts. But it is
+experimental, it has no authentication, the plugin itself warns that what it sends is licensed
+technology the provider must not train on, and an editor change sits outside Claude Code's
+checkpoints. Those are decisions a project makes deliberately, once, with the terms checked - not
+defaults the kit turns on.
+
+---
+
+## 28. Cross-platform, patches and DLC
+
+**Why a section, not a block in the project template.** The template is loaded in every session of
+every project. A full set of platform rules there would cost each session about 5,000 tokens and push
+the template past 27.1's 200 lines; as a rule group it loads with platform code and config, where it
+applies. The template keeps what is the project's own - targets, tiers, budgets, commands, owners -
+and a short list of what Claude must never do, because each item there breaks something the editor
+does not show.
+
+**Why it cites instead of restating.** Tick, synchronous loads, `FText`, input, World Partition, save
+versioning and short-lived branches were already rules (3.12, 10.3, 12.5, 9.13, 23.3, 24, 26). A second
+copy of each drifts from the first; a citation cannot.
+
+**Why the lifecycle rules name the delegates.** The brief this section came from routed a controller
+disconnect through `FCoreDelegates`, and a memory warning through the memory-trim delegate. In UE 5.7
+and 5.8 the first is `IPlatformInputDeviceMapper`, and the second fires during map loads, not on low
+memory.
+Named and listed in 22.2, each is re-checked on every upgrade.
+
+**Why a rename after release adds a redirect rather than changing 14.3.** Fixing up redirectors keeps
+a project clean, and stays right. After a release, a save, a patch or a DLC can still name the old
+path or primary asset ID, so the rename also adds a Core Redirect or an Asset Manager redirect - an
+addition 14.3 does not contradict.
+
+**Why some rows are [unverified].** No project here has shipped on a phone store yet, and no Android or
+iOS SDK was installed when this was written. The plugins exist in engine source; what a store does
+with their output has not been run. The first project to ship verifies each row, as 26.3's are.

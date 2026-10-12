@@ -12,8 +12,8 @@ decay. This section is how they get re-checked.
 
 - **An upgrade has a named owner and a branch** (1.5). It is never done on the main branch and never
   by whoever happened to notice.
-- **Decide the cadence once and write it in the project README** - which engine version the project
-  targets, and whether it tracks minor releases.
+- **Decide the cadence once and write it in the project's `CLAUDE.md`** - which engine version the
+  project targets, and whether it tracks minor releases.
 - **Never upgrade inside a milestone.** The first week after one is the cheapest moment.
 - **Read the release notes and the upgrade notes before touching anything**, and list what they say
   about the systems this project actually uses.
@@ -27,6 +27,7 @@ upgrade, not a suggestion.
 | Claim | Section | How to re-check |
 |---|---|---|
 | `AActor` defaults tick off; tick-group defaults | 3.12 | `AActor::AActor` in `Actor.cpp`; verify a live actor with `dumpticks` |
+| The camera manager updates after `TG_PostPhysics` and before `TG_PostUpdateWork` | 3.12 | `UpdateCameraManager` in `UWorld::Tick`, `LevelTick.cpp` |
 | `check` / `ensure` behaviour in Shipping; `DO_CHECK`, `DO_ENSURE` | 3.9 | `Build.h`, `AssertionMacros.h` |
 | `UE_LOGFMT` token matching is positional | 6.5 | `StructuredLog.h` |
 | Uninitialised reflected struct fields | 4.6 | The uninitialised-property check in `Class.cpp` |
@@ -49,8 +50,17 @@ upgrade, not a suggestion.
 | Tagged serialisation converts a saved number to a wider numeric property | 24.2 | `TProperty_Numeric::ConvertFromType` in `UObject/UnrealType.h` |
 | Async save and load completions arrive through `FTSTicker::GetCoreTicker()` | 24.6 | `ISaveGameSystem::OnAsyncComplete` in `SaveGameSystem.cpp` |
 | `GlobalConfig` loads from the declaring base class's section | tooling | `CPF_GlobalConfig` in `ObjectMacros.h` - then re-run the validator test in `tooling/README.md` |
-| A cue notify with no cue tag derives one from its asset name, stripping `GC_`, in an interactive editor only | 25.1 | `UAbilitySystemGlobals::DeriveGameplayCueTagFromAssetName` in `AbilitySystemGlobals.cpp` |
-| Attribute accessor macros paste the member name; table rows are looked up as `<SetClass>.<Attribute>` | 25.4 | `ATTRIBUTE_ACCESSORS_BASIC` in `AttributeSet.h`; `UAttributeSet::InitFromMetaDataTable` in `AttributeSet.cpp` |
+| A cue notify with no cue tag derives one from its asset name, stripping `GC_`, in every editor process including commandlets and the cook, never in a packaged game; an unregistered tag stays empty, silently | 25.1 | `UAbilitySystemGlobals::DeriveGameplayCueTagFromAssetName` in `AbilitySystemGlobals.cpp` (`WITH_EDITOR` and `GIsEditor`); `UCommandlet`'s `IsEditor` default in `Commandlet.cpp` |
+| `UAbilitySystemComponent` is not `Blueprintable`, so an ASC Blueprint needs a project C++ parent | 25.1 | Its `UCLASS` in `AbilitySystemComponent.h`; the harness's `NamingCheckGas` module |
+| Attribute accessor macros paste the member name; table rows are looked up as `<DeclaringClass>.<Attribute>`, silently skipped when missing | 25.4 | `ATTRIBUTE_ACCESSORS_BASIC` in `AttributeSet.h`; `UAttributeSet::InitFromMetaDataTable` in `AttributeSet.cpp` |
+| Collision hulls `UCX_` / `UBX_` / `USP_` / `UCP_` pair with the render mesh by name; `SOCKET_` nodes become static mesh sockets | 23.2 | `GetMeshCollisionFromName` and the render-mesh match in Interchange (`InterchangeGenericStaticMeshPipeline.cpp` in 5.7, `InterchangeMeshHelper.cpp` and `InterchangeLODDataParser.cpp` in 5.8); `SocketPrefix` in `FbxStaticMeshImport.cpp` |
+| Lifecycle delegates: `ApplicationWillDeactivateDelegate`, `ApplicationHasReactivatedDelegate`, `ApplicationWillEnterBackgroundDelegate`, `ApplicationShouldUnloadResourcesDelegate`; the terminate delegate not guaranteed on mobile; `GetMemoryTrimDelegate` fired from map loads | 28.7 | `Misc/CoreDelegates.h` - the comments on each delegate |
+| A controller connection change is `IPlatformInputDeviceMapper::GetOnInputDeviceConnectionChange`, not an `FCoreDelegates` member | 28.7 | `GenericPlatformInputDeviceMapper.h`; `CoreDelegates.h` |
+| A folder named for a platform or platform group compiles only for that platform | 28.1 | `GetExcludedFolderNames` in UBT's `UEBuildPlatform.cs`; the groups in `UEBuildTarget.cs` |
+| `-createreleaseversion`, `-basedonreleaseversion`, `-generatepatch` cook a release and a patch against it | 28.9 | `ProjectParams.cs` in AutomationTool |
+| `ProjectVersion`, Android `StoreVersion` and iOS `VersionInfo` are the version settings | 28.9 | `GeneralProjectSettings.h`, `AndroidRuntimeSettings.h`, `IOSRuntimeSettings.h` |
+| Per-platform scaling: mesh `MinLOD` is `FPerPlatformInt`; `TextureLODGroups` in device profiles; `FPlatformAudioCookOverrides`; Niagara effect-type scalability by platform set; `Quality Switch` and `Feature Level Switch` nodes | 28.5 | `StaticMesh.h`, `BaseDeviceProfiles.ini`, `AudioCompressionSettings.h`, `NiagaraEffectType.h`, `MaterialExpressionQualitySwitch.h` |
+| `[CoreRedirects]` `+PackageRedirects=` and the Asset Manager's `PrimaryAssetIdRedirects` keep an old name loading | 28.9 | `BaseEngine.ini`'s `[CoreRedirects]` examples; `AssetManagerSettings.h` |
 | Editor validator API shape | 18, tooling | `EditorValidatorBase.h` - the virtual signatures move between versions |
 | Every trap in section 16 | 16 | Re-test the ones the project relies on; a fixed trap is worth deleting |
 

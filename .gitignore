@@ -1,3 +1,8 @@
 # Python bytecode from tooling/check-standard.py
 __pycache__/
 *.pyc
+
+# Per-machine editor and IDE folders - never part of a release
+.idea/
+.vs/
+.vscode/

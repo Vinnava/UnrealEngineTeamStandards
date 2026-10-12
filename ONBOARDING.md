@@ -45,6 +45,7 @@ Section 16 is every engine behaviour that fails silently. These are the ones new
 
 - **What to read for the task in front of you** - the table in the [README](README.md).
 - **Why a rule exists** - [why.md](why.md), by section number. Read it before arguing with a rule.
+- **Working with Claude Code** - section 27 and the kit in [tooling/claude/](tooling/claude/): plan with `/ue-plan`, gate with `/ue-gate`.
 - **Something looks wrong** - it may be. Raise a `CONFLICT` block (14.1); a rule nobody can follow is
   a defect in the standard, and the owner fixes it.
 

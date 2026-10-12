@@ -1,0 +1,13 @@
+# Team clangd config - standard section 27.4. Copy to the project root, beside .clang-tidy.
+#
+# Unreal's headers stop clangd on the first log macro: UE_PRIVATE_APPEND_VA_ARG_COUNT pastes an
+# invalid token that MSVC accepts and clang reports as an error, and every later line of the file
+# fails with it. Without this flag a clean UE 5.8 source file shows about twenty false errors, and
+# Claude reads each one as a real compile error.
+CompileFlags:
+  Add: [-Wno-invalid-token-paste]
+
+# clangd's include checker does not know Unreal's include model - CoreMinimal.h, the .generated.h
+# that must come last, module-level includes - so its "unused include" findings are noise here.
+Diagnostics:
+  UnusedIncludes: None

@@ -10,6 +10,8 @@ save game, a settings save, a custom binary cache. Progress kept only on a backe
 Every rule here was run, not just read: [`tooling/tests/save-version-harness/`](../tooling/tests/save-version-harness/)
 builds one game four times over, loads each build's saves in the next, and builds two of the
 mistakes in 24.5 on purpose to show the damage each one does.
+24.8 is the exception: its rules for several platforms and cloud services are conventions the
+harness does not yet run.
 
 ---
 
@@ -226,3 +228,30 @@ that have not shipped.
 | A field that should not persist comes back after a load | It is a `UPROPERTY` without `Transient` - `SaveGameToSlot` ignores the `SaveGame` flag (16.3) |
 | The new build is fine; the old build corrupts the save | The loader does not refuse, or later overwrites, a newer build's save |
 | Data misaligned after a raw binary change | The read order no longer matches the write order for that version |
+
+### 24.8 Across platforms and cloud services
+
+The save rules for a game on several platforms or stores (28). The first project that ships a
+cloud save proves them.
+
+- **Saved data names content by a stable ID** - an `FPrimaryAssetId`, a GameplayTag or a
+  project-defined `FName` (9.14) - **never a pointer, an asset path or an array index.** A path moves
+  with a rename; an index moves when a list is reordered.
+- **Fixed-size types only** - `int32`, `uint8`, `double` - and no platform-specific struct. The same
+  save loads on every platform the game ships on.
+- **A header on every save:** the game version and CI build number (28.9), the platform, a
+  timestamp and a checksum of the payload. The format version is the custom version (24.3).
+- **Progression and settings are separate saves.** Graphics and input settings belong to the device
+  and are never synced.
+- **Content a save names but this build lacks** - a removed item, a DLC no longer owned or installed -
+  **is kept or skipped with a fallback** (24.5), never a crash and never a wiped save.
+- **Writes are atomic:** write a temporary slot, read it back and verify the checksum, then replace the
+  real slot, keeping the previous one as a backup. A load that fails the checksum falls back to the
+  backup.
+- **Cloud saves go through the save subsystem** (28.2) - Steam Cloud, Epic, iCloud, Google Play Saved
+  Games. Progress shared across stores needs an account backend (21); the payload is designed for one
+  from the start, even if it ships later.
+- **The conflict policy for cloud saves and the save size budget are written in `CLAUDE.md`** before
+  the first cloud save ships.
+- **Mobile saves when the app goes to the background** (28.7), and never mid-transition or while a
+  level loads.

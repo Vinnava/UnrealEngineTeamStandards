@@ -153,6 +153,7 @@ Content/_<Project>/
   Audio/
   Animation/
   Art/
+  VFX/
   Cinematics/
 ```
 

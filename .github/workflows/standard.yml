@@ -32,6 +32,18 @@ jobs:
       - name: unittest
         run: python -m unittest discover -s tooling/tests -v
 
+  manifest:
+    name: Release manifest matches the files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # Projects verify their pinned copy against this file (26.4), so it must never lag the tree
+      - name: verify-standard.py --complete
+        run: python tooling/verify-standard.py --complete
+
   formatting:
     name: Shipped C++ matches tooling/.clang-format
     runs-on: ubuntu-latest

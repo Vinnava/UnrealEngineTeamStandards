@@ -32,13 +32,22 @@ def write_png(path, width, height):
                   + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
 
 
-def blueprint(name, path, parent, factory=None):
+def blueprint(name, path, parent, factory=None, asset_class=unreal.Blueprint):
     factory = factory or unreal.BlueprintFactory()
     factory.set_editor_property("parent_class", parent)
-    tools.create_asset(name, path, unreal.Blueprint, factory)
+    # An asset the editor refuses to create would otherwise pass every "passes" check by absence
+    if tools.create_asset(name, path, asset_class, factory) is None:
+        raise RuntimeError(f"could not create {name} from {parent.__name__}")
 
 
-def texture(name, width, height):
+def ability(name, parent=unreal.GameplayAbility):
+    """Made through the factory behind the editor's Gameplay Ability Blueprint menu, which creates a
+    GameplayAbilityBlueprint - a different asset class from a plain Blueprint, so the validator is
+    tested on what a designer actually makes."""
+    blueprint(name, ROOT, parent, unreal.GameplayAbilitiesBlueprintFactory(), unreal.GameplayAbilityBlueprint)
+
+
+def texture(name, width, height, compression=None):
     source = f"{unreal.Paths.project_saved_dir()}{name}.png"
     write_png(source, width, height)
     task = unreal.AssetImportTask()
@@ -47,6 +56,9 @@ def texture(name, width, height):
     task.set_editor_property("automated", True)
     task.set_editor_property("replace_existing", True)
     tools.import_asset_tasks([task])
+    if compression is not None:
+        imported = library.load_asset(f"{ROOT}/{name}")
+        imported.set_editor_property("compression_settings", compression)
 
 
 # Naming (7.1-7.3)
@@ -54,8 +66,22 @@ blueprint("BP_Main", ROOT, unreal.GameModeBase)           # FAIL: a GameMode nee
 blueprint("BP_GM_Main", ROOT, unreal.GameModeBase)        # pass
 blueprint("BP_TEMP_ragdoll", ROOT, unreal.Actor)          # FAIL: lower case after BP_TEMP_ (7.3)
 blueprint("BP_Door", ROOT, unreal.Actor)                  # pass
-blueprint("BPC_Health", ROOT, unreal.ActorComponent)      # FAIL: a component needs BP_AC_ (7.2)
+blueprint("BP_Health", ROOT, unreal.ActorComponent)       # FAIL: a component needs BP_AC_ (7.2)
 blueprint("BP_AC_Health", ROOT, unreal.ActorComponent)    # pass
+
+# GAS (25.1) - matched by parent class name, so subclasses of each base are cases of their own
+ability("GA_Dash")                                                       # pass
+ability("BP_Dash")                                                       # FAIL: an ability needs GA_
+ability("BP_TEMP_Dash")                                                  # pass: BP_TEMP_ whatever the parent (8.2)
+blueprint("GE_Damage_Fire", ROOT, unreal.GameplayEffect)                 # pass
+blueprint("BP_DamageFire", ROOT, unreal.GameplayEffect)                  # FAIL: an effect needs GE_
+blueprint("GC_Damage_Fire", ROOT, unreal.GameplayCueNotify_Static)       # pass
+blueprint("BP_HitCue", ROOT, unreal.GameplayCueNotify_Burst)             # FAIL: a burst cue is a static cue - GC_
+blueprint("GC_Burning", ROOT, unreal.GameplayCueNotify_Actor)            # pass
+blueprint("BP_BurnLoop", ROOT, unreal.GameplayCueNotify_Looping)         # FAIL: a looping cue is an actor cue - GC_
+# The engine's ASC is not Blueprintable, so these derive from the project-side class in NamingCheckGas
+blueprint("BP_AC_AbilitySystem", ROOT, unreal.HarnessAbilitySystemComponent)   # pass
+blueprint("BP_AbilitySystem", ROOT, unreal.HarnessAbilitySystemComponent)      # FAIL: the ASC is a component - BP_AC_
 blueprint("BP_whatever", OUTSIDE, unreal.Actor)           # SILENT: outside the content root
 blueprint("MacroHelpers", ROOT, unreal.Actor, unreal.BlueprintMacroFactory())  # pass: 7.1 gives no prefix
 tools.create_asset("Unmapped", ROOT, unreal.SubsurfaceProfile, unreal.SubsurfaceProfileFactory())  # WARNING
@@ -64,6 +90,8 @@ tools.create_asset("Unmapped", ROOT, unreal.SubsurfaceProfile, unreal.Subsurface
 texture("T_Ok", 256, 256)                                 # pass
 texture("T_NotPow2", 300, 200)                            # FAIL: can never stream
 texture("T_Big", 1024, 1024)                              # FAIL: over the 512 budget
+texture("T_Wall_N", 256, 256)                             # FAIL: _N imported as Default, not Normalmap
+texture("T_Floor_N", 256, 256, unreal.TextureCompressionSettings.TC_NORMALMAP)   # pass
 library.duplicate_asset("/Engine/BasicShapes/Sphere", f"{ROOT}/SM_Sphere")   # FAIL: 960 triangles, one LOD
 library.duplicate_asset("/Engine/BasicShapes/Cube", f"{ROOT}/SM_Cube")       # pass: 12 triangles
 
