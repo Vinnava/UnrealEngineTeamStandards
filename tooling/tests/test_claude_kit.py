@@ -280,6 +280,18 @@ class ScriptTests(unittest.TestCase):
         self.assertTrue(any("LNK2019" in e for e in errors))
         self.assertEqual(warnings, ["Source/Game/Thing.cpp:30  C4996: 'Old' was declared deprecated"])
 
+    def test_an_engine_path_is_never_a_project_file_from_inside_the_project(self):
+        # On Linux or macOS a drive-letter path is relative, so resolving it from the project root
+        # used to graft it onto the project and report the engine's warning as the project's own
+        engine = "C:/Program Files/Epic Games/UE_5.8/Engine/Source/Runtime/Core/X.h(5): warning C4100: unreferenced"
+        previous = os.getcwd()
+        os.chdir(self.project)
+        try:
+            _, warnings, _, _ = self.build.summarise([engine], self.project)
+        finally:
+            os.chdir(previous)
+        self.assertEqual(warnings, [])
+
     def test_log_filter_by_level_and_category_and_crash_block(self):
         lines = [
             "[2026.10.12-10.00.00:000][  0]LogGameQuest: Warning: step missing",

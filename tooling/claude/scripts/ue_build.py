@@ -41,13 +41,14 @@ def summarise(lines: list[str], project: Path) -> tuple[list[str], list[str], st
             live_coding = True
         match = COMPILER.match(line)
         if match:
-            path = ue_common.relative_to(match.group("path").strip(), project)
-            where = f"{path}:{match.group('line') or match.group('cline')}"
+            raw_path = match.group("path").strip()
+            inside = ue_common.project_relative(raw_path, project)
+            where = f"{ue_common.relative_to(raw_path, project)}:{match.group('line') or match.group('cline')}"
             code = f"{match.group('code')}: " if match.group("code") else ""
             entry = f"{where}  {code}{match.group('text').strip()}"
             if match.group("kind").lower() == "error":
                 errors.append(entry)
-            elif not Path(path).is_absolute() and not path.startswith(".."):
+            elif inside is not None:
                 warnings.append(entry)
             continue
         if TOOL_ERROR.search(line):

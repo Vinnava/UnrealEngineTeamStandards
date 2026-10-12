@@ -10,13 +10,16 @@ import re
 import subprocess
 import sys
 import time
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 # tooling/claude/scripts/ue_common.py -> the pinned copy of the standard
 STANDARDS = Path(__file__).resolve().parents[3]
 
 # Unreal's own log line prefix: [2026.10.12-10.11.12:123][  0]
 LOG_PREFIX = re.compile(r"^\[[^\]]*\]\[[^\]]*\]")
+
+# A Windows absolute path - C:/... or C:\... - which is not absolute to Linux or macOS path rules
+WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:/")
 
 
 def find_project(start: Path | None = None) -> Path | None:
@@ -153,9 +156,21 @@ def compact(lines: list[str], limit: int) -> tuple[list[str], int]:
     return shown[:limit], max(0, len(shown) - limit)
 
 
+def project_relative(path_text: str, project: Path) -> str | None:
+    """The path relative to the project, or None when it lies outside it.
+
+    A drive-letter path is a Windows path on every host: on Linux or macOS it is not absolute, so
+    resolving it would graft it onto the working directory and could land it inside the project.
+    """
+    text = path_text.replace("\\", "/")
+    if WINDOWS_DRIVE.match(text) and not isinstance(project, PureWindowsPath):
+        return None
+    try:
+        return Path(text).resolve().relative_to(project.resolve()).as_posix()
+    except (ValueError, OSError):
+        return None
+
+
 def relative_to(path_text: str, project: Path) -> str:
     """A path printed relative to the project when it is inside it, so output stays short."""
-    try:
-        return Path(path_text).resolve().relative_to(project).as_posix()
-    except (ValueError, OSError):
-        return path_text.replace("\\", "/")
+    return project_relative(path_text, project) or path_text.replace("\\", "/")
