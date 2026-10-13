@@ -1106,3 +1106,44 @@ addition 14.3 does not contradict.
 **Why some rows are [unverified].** No project here has shipped on a phone store yet, and no Android or
 iOS SDK was installed when this was written. The plugins exist in engine source; what a store does
 with their output has not been run. The first project to ship verifies each row, as 26.3's are.
+
+---
+
+## 29. Handheld readiness
+
+Handhelds are a planned target, not a current one, and the section is written to both halves of that.
+Building for a device nobody ships on yet is the speculative second path 9.1 forbids: profiles and
+budgets for hardware nobody tests on are guesses, and guesses rot. But a handful of decisions are free
+on the first screen and a rewrite on the hundredth, and those are the only rules here.
+
+**Why a section, not more of 28.** Section 28 loads for a project on more than one platform. The
+decisions here have to be made by a PC-only project too - that is the project that later adds a Steam
+Deck - so they load with UI, input, settings and scalability config instead, and cite 28 where it
+already says the same thing.
+
+**Why gamepad-only and one text-entry function (29.2).** A screen that needs a keyboard is found when a
+Steam Deck tester gets stuck on the login or the EULA - the first screens built and the last anyone
+re-reads. A text field that reads the keyboard directly is fixed one at a time; a text field that asks
+one function for text is fixed once, behind that function.
+
+**Why device knowledge lives in one layer (29.3).** It is 9.13's gamepad rule one level up. Every
+hardware check in gameplay is a branch someone must find when the device list changes, and a
+behaviour no desktop test exercises.
+
+**Why a scale setting with one value (29.4).** Adding the setting later means finding every widget that
+sized itself on the assumption there was none. A second value in a setting that already exists, saves
+and is read everywhere is a data change. 1920x1080 is named because it is the assumption a
+desktop-built UI makes without anyone deciding it; the Steam Deck and Legion Go panels are 16:10.
+
+**Why frame cap, vsync and PSO now (29.5).** A hard-coded cap or vsync mode is invisible on a desktop
+and wrong on a handheld panel, where the player expects to choose. PSO caching costs the same to set up
+on day one as on day four hundred, removes first-time hitches on PC today (13.5), and on a handheld's
+slower CPU it decides whether the game is playable. Suspend is a handheld's normal way to stop
+playing, not an edge case, so code that is only safe at a loading screen will be woken mid-save.
+Middleware that refuses to run under Proton or on a Windows handheld cannot be configured around later;
+it can only be replaced.
+
+**Why four of these are in the template's "What Claude must NOT do".** They are the ones an assistant
+reaches for by default - a keyboard shortcut, a 1080p canvas, a frame cap in code, a helpful handheld
+profile - and the template is the one list loaded in every session, so it is where they are stopped
+before the rule group has loaded.

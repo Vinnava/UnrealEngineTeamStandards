@@ -174,7 +174,7 @@ when you are new and building the habit. Items marked **[tool]** are already enf
       13.3)
 - [ ] Binary assets you edited were locked; redirectors fixed up after any move (14.3, 26.1)
 
-**Audio, accessibility and online** (where the change touches them)
+**Audio, accessibility, online and handheld readiness** (where the change touches them)
 
 - [ ] No sound played by hard asset reference from gameplay; every new sound has a concurrency group
       with a cap (19.1, 19.3)
@@ -182,6 +182,8 @@ when you are new and building the habit. Items marked **[tool]** are already enf
 - [ ] New player-facing strings come from a string table and format with named arguments (20.8)
 - [ ] Every new request has a timeout, a retry policy, a cancellation path and a defined failure
       behaviour; no secret and no token is logged or committed (21.2, 21.4)
+- [ ] Nothing requires a keyboard, mouse or touch; no UI assumes a fixed resolution or aspect ratio;
+      no frame cap or vsync is hard-coded; no handheld-specific code yet (29.1, 29.2, 29.4, 29.5)
 
 **Docs**
 

@@ -55,6 +55,12 @@
       "rules": ["28-cross-platform"],
       "paths": ["Source/**/{Android,IOS,Apple,Windows,Mac,Linux}/**", "Platforms/**", "Config/{Android,IOS,Windows,Mac,Linux}/**", "Config/*DeviceProfiles.ini", "Plugins/GameFeatures/**", "**/*Platform*.{h,cpp}", "**/*Entitlement*.{h,cpp}", "**/*Achievement*.{h,cpp}"],
       "budget_tokens": 4000
+    },
+    {
+      "name": "handheld",
+      "rules": ["29-handheld"],
+      "paths": ["Source/**/UI/**", "Plugins/**/UI/**", "**/*Widget*.{h,cpp}", "**/*HUD*.{h,cpp}", "**/*Input*.{h,cpp}", "**/*Settings*.{h,cpp}", "Config/*Scalability.ini", "Config/*DeviceProfiles.ini", "Config/*Engine.ini"],
+      "budget_tokens": 1600
     }
   ]
 }

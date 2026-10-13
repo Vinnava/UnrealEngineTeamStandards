@@ -25,7 +25,7 @@ a deviation goes in the override table below. The other rule files load when the
 rules with the first source file, the save-data rules with the first save class (27.1). For work they
 do not cover, use the skill: `ue-async`, `ue-performance`, `ue-traps`, `ue-content`, `ue-source-control`.
 
-> Standard version: 4.1.0
+> Standard version: 4.2.0
 
 ## This project
 
@@ -138,7 +138,8 @@ Each system listed here carries `THREADING-CANDIDATE` in its class comment.
 
 ## What Claude must NOT do
 
-Each one breaks a platform, a store or a player's save in a way the editor does not show.
+Each one breaks a platform, a store, a future target or a player's save in a way the editor does
+not show.
 
 - **Never add platform-specific code to a shared gameplay class** - it goes behind an interface (28.1).
 - **Never load an asset synchronously in gameplay code** - soft references and async loads (10.3).
@@ -153,6 +154,10 @@ Each one breaks a platform, a store or a player's save in a way the editor does 
 - **Never hard-reference DLC content** from base game code or assets (28.9).
 - **Never hard-code a store ID, product ID or entitlement check in gameplay** - the service layer (28.2).
 - **Never ship a build whose save fixtures have not loaded** in the automated test (24.6).
+- **Never require a keyboard, mouse or touch** anywhere in the game flow (29.2).
+- **Never assume a fixed resolution or aspect ratio** in UI (29.4).
+- **Never hard-code a frame-rate cap or vsync behaviour** (29.5).
+- **Never add handheld-specific code or profiles** until handhelds are a target (29.1).
 
 ## How to work here
 

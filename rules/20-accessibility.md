@@ -55,7 +55,8 @@ and both appear in platform certification.
   are the usual casualty (section 16).
 - **Nothing player-readable is baked into a texture.** A texture cannot be localised, scaled or
   read by a screen reader.
-- **Respect the platform's title-safe area** on console.
+- **Respect the platform's title-safe area** on console, and lay out for any aspect ratio and
+  resolution (29.4).
 - **No text-only critical information where an icon would also serve**, and no icon-only where the
   meaning is not conventional.
 

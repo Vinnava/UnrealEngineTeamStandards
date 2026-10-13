@@ -7,7 +7,7 @@ Where a project has to pin something down - its module name, content root or sho
 standard uses a `<Project>` placeholder, and that project's `CLAUDE.md` fills it in - from
 [`tooling/project-template/`](tooling/project-template/).
 
-**Version 4.1.0** - see the [changelog](CHANGELOG.md). **Owner: @Vinnava** ("Ownership" below). Written against **Unreal Engine 5.x**. Every
+**Version 4.2.0** - see the [changelog](CHANGELOG.md). **Owner: @Vinnava** ("Ownership" below). Written against **Unreal Engine 5.x**. Every
 claim about engine behaviour was checked against **UE 5.7** source, and the defaults that matter
 were re-checked in **5.8**. Where a rule depends on the engine version, it says so.
 
@@ -63,6 +63,7 @@ span: `rules/05-06-comments-logging.md`. There is no second numbering scheme to 
 | 26 | [rules/26-source-control.md](rules/26-source-control.md) | Choosing or setting up source control; pinning or upgrading this standard |
 | 27 | [rules/27-ai-assistants.md](rules/27-ai-assistants.md) | When a project adopts the Claude kit, or Claude Code changes |
 | 28 | [rules/28-cross-platform.md](rules/28-cross-platform.md) | More than one platform or store; before a release, a patch or a DLC |
+| 29 | [rules/29-handheld.md](rules/29-handheld.md) | Before you build input, UI, settings or the build pipeline - handhelds are not a target yet |
 
 **Lost, or something is behaving impossibly?** Go straight to the debugging playbook in
 [rules/14-15-practice.md](rules/14-15-practice.md) (section 15). It is the highest-value page here on an

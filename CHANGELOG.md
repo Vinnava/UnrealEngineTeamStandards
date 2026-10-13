@@ -1,5 +1,29 @@
 # Changelog
 
+**4.2.0 - 2026-10-13**
+
+**Handheld readiness.** A minor version: a new section and new template lines; nothing existing changes
+meaning.
+
+- **New section 29, [Handheld readiness](rules/29-handheld.md)**, for every project, single-platform
+  included. Handhelds are not a target, and 29.1 forbids handheld-specific features, profiles and
+  optimisations until they are. What it asks for now: nothing in the game flow needs a keyboard, mouse
+  or touch, text entry goes through one platform-layer function, and glyphs resolve per device (29.2);
+  device knowledge lives only in the platform service layer (29.3); layouts are aspect-ratio and
+  resolution independent, with a UI scale setting from the start (29.4); frame cap and vsync are
+  settings, scalability and device profiles stay data, PSO caching is in the build pipeline, suspend
+  and resume are safe at any moment through 28.7, saves follow section 24 unchanged, and no middleware
+  that breaks under Proton (29.5). 29.6 lists what to add when handhelds become a target. It cites 28
+  rather than restating it.
+- **A new `handheld` rule group** loads it with UI, input and settings code and with scalability,
+  device-profile and engine config - 1,600 tokens.
+- **The project template's "What Claude must NOT do" gains four lines**: no keyboard, mouse or touch
+  requirement; no fixed resolution or aspect ratio; no hard-coded frame cap or vsync; no handheld code
+  or profiles yet. 179 lines.
+- **13.7's handheld bullet now applies once handhelds are a target** (29.1). 20.5 points to 29.4;
+  **17.2** gains a handheld-readiness item; **18.2** gains PSO caching and the frame-cap, vsync and
+  UI-scale settings.
+
 **4.1.0 - 2026-10-12**
 
 **Source control without git, a generic content pipeline, a Claude Code kit, and the 4.0.0 claims

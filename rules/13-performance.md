@@ -141,7 +141,7 @@ A subsystem is not done until it has all four:
 - **Check bounds** with `FreezeRendering` and a fly-out - wrong bounds defeat every culling stage.
 - **Nanite meshes need no authored LODs; everything else still does.** Decide Nanite per asset
   category, by measurement.
-- **Handhelds:** measure at thermal steady state (ten minutes in, unplugged). Scalability tiers may
+- **Handhelds, once they are a target (29.1):** measure at thermal steady state (ten minutes in, unplugged). Scalability tiers may
   change resolution, post, GI and shadows - never gameplay visibility or fairness. Answer throttling
   with dynamic resolution.
 

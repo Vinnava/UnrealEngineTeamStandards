@@ -75,6 +75,8 @@ retrofit.
 - [ ] Accessibility decisions made before the first screen is built - subtitles, remapping, colour
       channel, text scale - 20.1
 - [ ] Audio concurrency groups and the voice budget established - 19.3, 19.9
+- [ ] PSO caching in the build pipeline, and the frame cap, vsync and UI scale exposed as settings,
+      with no handheld target - 29.4, 29.5
 - [ ] If anything persists on the device: the save version scaffolding and the one loader in place
       before the first external build, and a fixture from every external build loaded on every
       commit - 24.1, 24.3, 24.6
